@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线人力监控系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- 配置Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#0FC6C2',
+            success: '#00B42A',
+            warning: '#FF7D00',
+            danger: '#F53F3F',
+            gray: {
+              100: '#F2F3F5',
+              200: '#E5E6EB',
+              300: '#C9CDD4',
+              400: '#86909C',
+              500: '#4E5969',
+              600: '#272E3B',
+              700: '#1D2129',
+            }
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .transition-height {
+        transition: max-height 0.3s ease-in-out;
+      }
+      .table-hover-effect tr:hover {
+        background-color: rgba(22, 93, 255, 0.05);
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-100 text-gray-700 min-h-screen">
+  <!-- 顶部导航 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <i class="fa fa-line-chart text-primary text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-700">在线人力监控系统</h1>
+      </div>
+      <div class="text-sm text-gray-500">
+        <span id="current-date"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-6">
+    <!-- 数据导入区域 -->
+    <section class="mb-8">
+      <h2 class="text-lg md:text-xl font-semibold mb-4 text-gray-700 flex items-center">
+        <i class="fa fa-upload text-primary mr-2"></i>数据导入
+      </h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 班表数据导入 -->
+        <div class="bg-white rounded-lg p-5 card-shadow transition-all hover:shadow-lg">
+          <h3 class="font-medium text-gray-700 mb-3 flex items-center">
+            <i class="fa fa-calendar-check-o text-primary mr-2"></i>班表数据
+          </h3>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="roster-upload-area">
+            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
+            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
+            <input type="file" id="roster-file" class="hidden" accept=".xlsx">
+          </div>
+          <div class="mt-3 text-xs text-gray-500">
+            <p>表头要求：日期、服务类型、业务条线、员工所属四级部门、员工所属五级部门、ERP、姓名、报班时段、报班类型、班表倍数、状态、报班时间、接待量、优选权益</p>
+          </div>
+        </div>
+        
+        <!-- 人力在线情况导入 -->
+        <div class="bg-white rounded-lg p-5 card-shadow transition-all hover:shadow-lg">
+          <h3 class="font-medium text-gray-700 mb-3 flex items-center">
+            <i class="fa fa-users text-primary mr-2"></i>人力在线情况
+          </h3>
+          
+          <div class="mb-3 grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">日期</label>
+              <input type="date" id="online-date" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">报班时段</label>
+              <select id="online-time-period" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+                <option value="08:00-08:59">08:00-08:59</option>
+                <option value="09:00-09:59">09:00-09:59</option>
+                <option value="10:00-10:59">10:00-10:59</option>
+                <option value="11:00-11:59">11:00-11:59</option>
+                <option value="12:00-12:59">12:00-12:59</option>
+                <option value="13:00-13:59">13:00-13:59</option>
+                <option value="14:00-14:59">14:00-14:59</option>
+                <option value="15:00-15:59">15:00-15:59</option>
+                <option value="16:00-16:59">16:00-16:59</option>
+                <option value="17:00-17:59">17:00-17:59</option>
+                <option value="18:00-18:59">18:00-18:59</option>
+                <option value="19:00-19:59">19:00-19:59</option>
+                <option value="20:00-20:59">20:00-20:59</option>
+                <option value="21:00-21:59">21:00-21:59</option>
+                <option value="22:00-22:59">22:00-22:59</option>
+                <option value="23:00-23:59">23:00-23:59</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="online-upload-area">
+            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
+            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
+            <input type="file" id="online-file" class="hidden" accept=".xlsx">
+          </div>
+          <div class="mt-3 text-xs text-gray-500">
+            <p>表头要求：所属行政处、账号、客服姓名、状态、正在接待、平均正在咨询量、在线时长、挂起时长、满意度</p>
+          </div>
+        </div>
+        
+        <!-- ERP对照表导入 -->
+        <div class="bg-white rounded-lg p-5 card-shadow transition-all hover:shadow-lg">
+          <h3 class="font-medium text-gray-700 mb-3 flex items-center">
+            <i class="fa fa-exchange text-primary mr-2"></i>ERP对照表
+          </h3>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="erp-upload-area">
+            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
+            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
+            <input type="file" id="erp-file" class="hidden" accept=".xlsx">
+          </div>
+          <div class="mt-3 text-xs text-gray-500">
+            <p>表头要求：ERP、账号</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 导入列表展示 -->
+    <section class="mb-8">
+      <h2 class="text-lg md:text-xl font-semibold mb-4 text-gray-700 flex items-center">
+        <i class="fa fa-list-alt text-primary mr-2"></i>导入数据列表
+      </h2>
+      
+      <div class="bg-white rounded-lg p-5 card-shadow">
+        <div id="import-list" class="space-y-4">
+          <!-- 班表数据列表 -->
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">班表数据（保证只有一份班表）</h3>
+            <div id="roster-list" class="border rounded-md overflow-hidden">
+              <div class="text-center py-4 text-gray-500 text-sm" id="roster-empty">未导入班表数据</div>
+              <div id="roster-data-container" class="hidden">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">导入时间</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">数据量</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="roster-items">
+                    <!-- 班表数据项将动态添加 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 在线情况列表 -->
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">人力在线情况（同一日期、时段，请保证只有一份数据，否则将影响筛选数据下载）</h3>
+            <div id="online-list" class="border rounded-md overflow-hidden">
+              <div class="text-center py-4 text-gray-500 text-sm" id="online-empty">未导入人力在线情况数据</div>
+              <div id="online-data-container" class="hidden">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">日期</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">报班时段</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">导入时间</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">数据量</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="online-items">
+                    <!-- 在线情况数据项将动态添加 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- ERP对照表列表 -->
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">ERP对照表（生成数据清单基础，不在对照表，则不显示在查询列表）</h3>
+            <div id="erp-list" class="border rounded-md overflow-hidden">
+              <div class="text-center py-4 text-gray-500 text-sm" id="erp-empty">未导入ERP对照表数据</div>
+              <div id="erp-data-container" class="hidden">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">导入时间</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">数据量</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="erp-items">
+                    <!-- ERP对照表数据项将动态添加 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 数据查询与展示区域 -->
+    <section>
+      <h2 class="text-lg md:text-xl font-semibold mb-4 text-gray-700 flex items-center">
+        <i class="fa fa-search text-primary mr-2"></i>人员情况查询（请务必筛选日期和报班时段后，点击筛选，然后再查看/导出数据）
+      </h2>
+      
+      <div class="bg-white rounded-lg p-5 card-shadow mb-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <button id="query-today-btn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center transition-colors">
+            <i class="fa fa-calendar mr-2"></i>查询当天情况
+          </button>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">日期</label>
+              <input type="date" id="filter-date" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">报班时段</label>
+              <select id="filter-time-period" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+                <option value="">全部时段</option>
+                <option value="08:00-08:59">08:00-08:59</option>
+                <option value="09:00-09:59">09:00-09:59</option>
+                <option value="10:00-10:59">10:00-10:59</option>
+                <option value="11:00-11:59">11:00-11:59</option>
+                <option value="12:00-12:59">12:00-12:59</option>
+                <option value="13:00-13:59">13:00-13:59</option>
+                <option value="14:00-14:59">14:00-14:59</option>
+                <option value="15:00-15:59">15:00-15:59</option>
+                <option value="16:00-16:59">16:00-16:59</option>
+                <option value="17:00-17:59">17:00-17:59</option>
+                <option value="18:00-18:59">18:00-18:59</option>
+                <option value="19:00-19:59">19:00-19:59</option>
+                <option value="20:00-20:59">20:00-20:59</option>
+                <option value="21:00-21:59">21:00-21:59</option>
+                <option value="22:00-22:59">22:00-22:59</option>
+                <option value="23:00-23:59">23:00-23:59</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">员工所属五级部门</label>
+              <input type="text" id="filter-dept" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm" placeholder="输入部门名称">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">ERP</label>
+              <input type="text" id="filter-erp" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm" placeholder="输入ERP">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">账号</label>
+              <input type="text" id="filter-account" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm" placeholder="输入账号">
+            </div>
+          </div>
+          
+          <div class="flex gap-2">
+            <button id="filter-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center transition-colors">
+              <i class="fa fa-filter mr-2"></i>筛选
+            </button>
+            <button id="reset-filter-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md flex items-center transition-colors">
+              <i class="fa fa-refresh mr-2"></i>重置
+            </button>
+            <button id="export-btn" class="bg-success hover:bg-success/90 text-white px-4 py-2 rounded-md flex items-center transition-colors" disabled>
+              <i class="fa fa-download mr-2"></i>导出数据
+            </button>
+          </div>
+        </div>
+        
+        <!-- 数据统计 -->
+        <div id="stats-container" class="hidden mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+            <p class="text-xs text-gray-500">总人数</p>
+            <p class="text-xl font-semibold text-gray-700" id="total-count">0</p>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+            <p class="text-xs text-gray-500">在线人数</p>
+            <p class="text-xl font-semibold text-success" id="online-count">0</p>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+            <p class="text-xs text-gray-500">离线人数</p>
+            <p class="text-xl font-semibold text-danger" id="offline-count">0</p>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+            <p class="text-xs text-gray-500">部门数量</p>
+            <p class="text-xl font-semibold text-primary" id="dept-count">0</p>
+          </div>
+        </div>
+        
+        <!-- 图表区域 -->
+        <div id="chart-container" class="hidden mb-6 h-64">
+          <canvas id="status-chart"></canvas>
+        </div>
+        
+        <!-- 结果表格 -->
+        <div id="result-container" class="overflow-x-auto">
+          <div class="text-center py-8 text-gray-500" id="no-result">请先导入数据并进行查询</div>
+          
+          <table class="min-w-full text-sm table-hover-effect hidden" id="result-table">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">日期</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">报班时段</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">员工所属五级部门</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">所属行政处</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">ERP</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">姓名</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">账号</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">状态</th>
+              </tr>
+            </thead>
+            <tbody id="result-body">
+              <!-- 结果数据将动态添加 -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- 分页控件 -->
+        <div class="flex justify-between items-center mt-4 hidden" id="pagination">
+          <div class="text-sm text-gray-500">
+            显示 <span id="page-start">0</span>-<span id="page-end">0</span> 条，共 <span id="total-records">0</span> 条
+          </div>
+          <div class="flex gap-1">
+            <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              上一页
+            </button>
+            <span id="page-info" class="px-3 py-1 text-sm">第 1 页</span>
+            <button id="next-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              下一页
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 py-4 mt-8">
+    <div class="container mx-auto px-4 text-center text-sm text-gray-500">
+      <p>在线人力监控系统 &copy; <span id="current-year"></span></p>
+    </div>
+  </footer>
+
+  <!-- 通知提示组件 -->
+  <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50"></div>
+
+  <script>
+    // 全局数据存储
+    const appData = {
+      rosterData: [],        // 班表数据列表
+      onlineData: [],        // 在线情况数据列表
+      erpData: [],           // ERP对照表数据列表
+      resultData: [],        // 查询结果数据
+      currentPage: 1,        // 当前页码
+      pageSize: 100,         // 每页记录数
+      statusChart: null      // 状态图表实例
+    };
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', () => {
+      // 设置当前日期
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      document.getElementById('current-date').textContent = formatDate(today);
+      document.getElementById('current-year').textContent = today.getFullYear();
+      document.getElementById('online-date').value = dateStr;
+      document.getElementById('filter-date').value = dateStr;
+      
+      // 从本地存储加载数据
+      loadDataFromStorage();
+      
+      // 初始化事件监听
+      initEventListeners();
+    });
+
+    // 初始化事件监听
+    function initEventListeners() {
+      // 上传区域点击事件
+      document.getElementById('roster-upload-area').addEventListener('click', () => {
+        document.getElementById('roster-file').click();
+      });
+      
+      document.getElementById('online-upload-area').addEventListener('click', () => {
+        document.getElementById('online-file').click();
+      });
+      
+      document.getElementById('erp-upload-area').addEventListener('click', () => {
+        document.getElementById('erp-file').click();
+      });
+      
+      // 拖放事件
+      setupDragDrop('roster-upload-area', 'roster-file');
+      setupDragDrop('online-upload-area', 'online-file');
+      setupDragDrop('erp-upload-area', 'erp-file');
+      
+      // 文件上传处理
+      document.getElementById('roster-file').addEventListener('change', handleRosterUpload);
+      document.getElementById('online-file').addEventListener('change', handleOnlineUpload);
+      document.getElementById('erp-file').addEventListener('change', handleErpUpload);
+      
+      // 查询按钮事件
+      document.getElementById('query-today-btn').addEventListener('click', queryTodayData);
+      document.getElementById('filter-btn').addEventListener('click', filterData);
+      document.getElementById('reset-filter-btn').addEventListener('click', resetFilter);
+      document.getElementById('export-btn').addEventListener('click', exportData);
+      
+      // 分页按钮事件
+      document.getElementById('prev-page').addEventListener('click', () => {
+        if (appData.currentPage > 1) {
+          appData.currentPage--;
+          renderResultPage();
+        }
+      });
+      
+      document.getElementById('next-page').addEventListener('click', () => {
+        const totalPages = Math.ceil(appData.resultData.length / appData.pageSize);
+        if (appData.currentPage < totalPages) {
+          appData.currentPage++;
+          renderResultPage();
+        }
+      });
+    }
+
+    // 设置拖放功能
+    function setupDragDrop(areaId, inputId) {
+      const area = document.getElementById(areaId);
+      const input = document.getElementById(inputId);
+      
+      area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('border-primary');
+        area.classList.add('bg-primary/5');
+      });
+      
+      area.addEventListener('dragleave', () => {
+        area.classList.remove('border-primary');
+        area.classList.remove('bg-primary/5');
+      });
+      
+      area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('border-primary');
+        area.classList.remove('bg-primary/5');
+        
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+
+    // 处理班表数据上传
+    function handleRosterUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          // 验证表头
+          const requiredHeaders = [
+            '日期', '服务类型', '业务条线', '员工所属四级部门', '员工所属五级部门', 
+            'ERP', '姓名', '报班时段', '报班类型', '班表倍数', '状态', 
+            '报班时间', '接待量', '优选权益'
+          ];
+          
+          if (!validateHeaders(jsonData, requiredHeaders)) {
+            showToast('班表数据表头不符合要求', 'error');
+            return;
+          }
+          
+          // 添加导入信息
+          const importTime = new Date();
+          const rosterItem = {
+            id: 'roster_' + Date.now(),
+            importTime: importTime,
+            data: jsonData,
+            count: jsonData.length
+          };
+          
+          // 替换现有班表数据（因为班表数据不支持多次导入）
+          appData.rosterData = [rosterItem];
+          
+          // 保存到本地存储
+          saveDataToStorage();
+          
+          // 更新UI
+          renderRosterList();
+          
+          showToast(`班表数据导入成功，共 ${jsonData.length} 条记录`, 'success');
+        } catch (error) {
+          console.error('解析班表数据失败:', error);
+          showToast('解析班表数据失败，请检查文件格式', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      
+      // 重置文件输入，允许重复选择同一文件
+      e.target.value = '';
+    }
+
+    // 处理在线情况数据上传
+    function handleOnlineUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const date = document.getElementById('online-date').value;
+      const timePeriod = document.getElementById('online-time-period').value;
+      
+      if (!date) {
+        showToast('请选择日期', 'warning');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          // 验证表头
+          const requiredHeaders = [
+            '所属行政处', '账号', '客服姓名', '状态', '正在接待', 
+            '平均正在咨询量', '在线时长', '挂起时长', '满意度'
+          ];
+          
+          if (!validateHeaders(jsonData, requiredHeaders)) {
+            showToast('在线情况数据表头不符合要求', 'error');
+            return;
+          }
+          
+          // 为每条数据添加日期和时段
+          jsonData.forEach(item => {
+            item.导入日期 = date;
+            item.报班时段 = timePeriod;
+          });
+          
+          // 添加导入信息
+          const importTime = new Date();
+          const onlineItem = {
+            id: 'online_' + Date.now(),
+            date: date,
+            timePeriod: timePeriod,
+            importTime: importTime,
+            data: jsonData,
+            count: jsonData.length
+          };
+          
+          // 添加到在线情况数据列表
+          appData.onlineData.unshift(onlineItem);
+          
+          // 保存到本地存储
+          saveDataToStorage();
+          
+          // 更新UI
+          renderOnlineList();
+          
+          showToast(`在线情况数据导入成功，共 ${jsonData.length} 条记录`, 'success');
+        } catch (error) {
+          console.error('解析在线情况数据失败:', error);
+          showToast('解析在线情况数据失败，请检查文件格式', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      
+      // 重置文件输入
+      e.target.value = '';
+    }
+
+    // 处理ERP对照表上传
+    function handleErpUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          // 验证表头
+          const requiredHeaders = ['ERP', '账号'];
+          if (!validateHeaders(jsonData, requiredHeaders)) {
+            showToast('ERP对照表表头不符合要求', 'error');
+            return;
+          }
+          
+          // 添加导入信息
+          const importTime = new Date();
+          const erpItem = {
+            id: 'erp_' + Date.now(),
+            importTime: importTime,
+            data: jsonData,
+            count: jsonData.length
+          };
+          
+          // 替换现有ERP数据
+          appData.erpData = [erpItem];
+          
+          // 保存到本地存储
+          saveDataToStorage();
+          
+          // 更新UI
+          renderErpList();
+          
+          showToast(`ERP对照表导入成功，共 ${jsonData.length} 条记录`, 'success');
+        } catch (error) {
+          console.error('解析ERP对照表失败:', error);
+          showToast('解析ERP对照表失败，请检查文件格式', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      
+      // 重置文件输入
+      e.target.value = '';
+    }
+
+    // 验证表头是否符合要求
+    function validateHeaders(jsonData, requiredHeaders) {
+      if (jsonData.length === 0) return false;
+      
+      const actualHeaders = Object.keys(jsonData[0]);
+      return requiredHeaders.every(header => actualHeaders.includes(header));
+    }
+
+    // 渲染班表数据列表
+    function renderRosterList() {
+      const container = document.getElementById('roster-items');
+      const emptyMsg = document.getElementById('roster-empty');
+      const dataContainer = document.getElementById('roster-data-container');
+      
+      container.innerHTML = '';
+      
+      if (appData.rosterData.length === 0) {
+        emptyMsg.classList.remove('hidden');
+        dataContainer.classList.add('hidden');
+        return;
+      }
+      
+      emptyMsg.classList.add('hidden');
+      dataContainer.classList.remove('hidden');
+      
+      appData.rosterData.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-gray-200 hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="px-3 py-2">${formatDateTime(new Date(item.importTime))}</td>
+          <td class="px-3 py-2">${item.count}</td>
+          <td class="px-3 py-2">
+            <button class="text-danger hover:text-danger/80 text-sm delete-roster" data-id="${item.id}">
+              <i class="fa fa-trash-o mr-1"></i>删除
+            </button>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+      
+      // 添加删除事件监听
+      document.querySelectorAll('.delete-roster').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          appData.rosterData = appData.rosterData.filter(item => item.id !== id);
+          saveDataToStorage();
+          renderRosterList();
+          showToast('班表数据已删除', 'info');
+        });
+      });
+    }
+
+    // 渲染在线情况数据列表
+    function renderOnlineList() {
+      const container = document.getElementById('online-items');
+      const emptyMsg = document.getElementById('online-empty');
+      const dataContainer = document.getElementById('online-data-container');
+      
+      container.innerHTML = '';
+      
+      if (appData.onlineData.length === 0) {
+        emptyMsg.classList.remove('hidden');
+        dataContainer.classList.add('hidden');
+        return;
+      }
+      
+      emptyMsg.classList.add('hidden');
+      dataContainer.classList.remove('hidden');
+      
+      appData.onlineData.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-gray-200 hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="px-3 py-2">${item.date}</td>
+          <td class="px-3 py-2">${item.timePeriod}</td>
+          <td class="px-3 py-2">${formatDateTime(new Date(item.importTime))}</td>
+          <td class="px-3 py-2">${item.count}</td>
+          <td class="px-3 py-2">
+            <button class="text-danger hover:text-danger/80 text-sm delete-online" data-id="${item.id}">
+              <i class="fa fa-trash-o mr-1"></i>删除
+            </button>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+      
+      // 添加删除事件监听
+      document.querySelectorAll('.delete-online').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          appData.onlineData = appData.onlineData.filter(item => item.id !== id);
+          saveDataToStorage();
+          renderOnlineList();
+          showToast('在线情况数据已删除', 'info');
+        });
+      });
+    }
+
+    // 渲染ERP对照表列表
+    function renderErpList() {
+      const container = document.getElementById('erp-items');
+      const emptyMsg = document.getElementById('erp-empty');
+      const dataContainer = document.getElementById('erp-data-container');
+      
+      container.innerHTML = '';
+      
+      if (appData.erpData.length === 0) {
+        emptyMsg.classList.remove('hidden');
+        dataContainer.classList.add('hidden');
+        return;
+      }
+      
+      emptyMsg.classList.add('hidden');
+      dataContainer.classList.remove('hidden');
+      
+      appData.erpData.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-gray-200 hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="px-3 py-2">${formatDateTime(new Date(item.importTime))}</td>
+          <td class="px-3 py-2">${item.count}</td>
+          <td class="px-3 py-2">
+            <button class="text-danger hover:text-danger/80 text-sm delete-erp" data-id="${item.id}">
+              <i class="fa fa-trash-o mr-1"></i>删除
+            </button>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+      
+      // 添加删除事件监听
+      document.querySelectorAll('.delete-erp').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          appData.erpData = appData.erpData.filter(item => item.id !== id);
+          saveDataToStorage();
+          renderErpList();
+          showToast('ERP对照表已删除', 'info');
+        });
+      });
+    }
+
+    // 查询当天数据
+    function queryTodayData() {
+      // 检查是否有必要的数据
+      if (appData.rosterData.length === 0) {
+        showToast('请先导入班表数据', 'warning');
+        return;
+      }
+      
+      if (appData.onlineData.length === 0) {
+        showToast('请先导入在线情况数据', 'warning');
+        return;
+      }
+      
+      if (appData.erpData.length === 0) {
+        showToast('请先导入ERP对照表', 'warning');
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('filter-date').value = today;
+      
+      // 执行查询
+      filterData();
+    }
+
+    // 筛选数据
+    function filterData() {
+      // 获取筛选条件
+      const filterDate = document.getElementById('filter-date').value;
+      const filterTimePeriod = document.getElementById('filter-time-period').value;
+      const filterDept = document.getElementById('filter-dept').value.trim().toLowerCase();
+      const filterErp = document.getElementById('filter-erp').value.trim().toLowerCase();
+      const filterAccount = document.getElementById('filter-account').value.trim().toLowerCase();
+      
+      // 检查是否有必要的数据
+      if (appData.rosterData.length === 0 || appData.onlineData.length === 0 || appData.erpData.length === 0) {
+        showToast('请先导入所有必要的数据', 'warning');
+        return;
+      }
+      
+      // 合并所有数据
+      const allRosterData = appData.rosterData.flatMap(item => item.data);
+      const allOnlineData = appData.onlineData.flatMap(item => item.data);
+      const allErpData = appData.erpData.flatMap(item => item.data);
+      
+      // 创建ERP到账号的映射
+      const erpToAccountMap = {};
+      allErpData.forEach(item => {
+        erpToAccountMap[item.ERP.toLowerCase()] = item.账号;
+      });
+      
+      // 创建账号到在线情况的映射（按日期和时段）
+      const accountToOnlineMap = {};
+      allOnlineData.forEach(item => {
+        const key = `${item.账号}_${item.导入日期}_${item.报班时段}`;
+        accountToOnlineMap[key] = item;
+      });
+      
+      // 关联数据
+      const matchedData = allRosterData
+        .map(rosterItem => {
+          // 根据ERP获取账号
+          const account = erpToAccountMap[rosterItem.ERP.toLowerCase()];
+          if (!account) return null;
+          
+          // 根据账号、日期和时段获取在线情况
+          const onlineKey = `${account}_${rosterItem.日期}_${rosterItem.报班时段}`;
+          const onlineItem = accountToOnlineMap[onlineKey];
+          
+          // 构建结果对象
+          return {
+            日期: rosterItem.日期,
+            报班时段: rosterItem.报班时段,
+            员工所属五级部门: rosterItem.员工所属五级部门,
+            所属行政处: onlineItem ? onlineItem.所属行政处 : '',
+            ERP: rosterItem.ERP,
+            姓名: rosterItem.姓名,
+            账号: account,
+            状态: onlineItem ? onlineItem.状态 : '未找到在线记录'
+          };
+        })
+        .filter(item => item !== null)
+        // 应用筛选条件
+        .filter(item => {
+          if (filterDate && item.日期 !== filterDate) return false;
+          if (filterTimePeriod && item.报班时段 !== filterTimePeriod) return false;
+          if (filterDept && !item.员工所属五级部门.toLowerCase().includes(filterDept)) return false;
+          if (filterErp && !item.ERP.toLowerCase().includes(filterErp)) return false;
+          if (filterAccount && !item.账号.toLowerCase().includes(filterAccount)) return false;
+          return true;
+        });
+      
+      // 保存结果数据
+      appData.resultData = matchedData;
+      appData.currentPage = 1;
+      
+      // 渲染结果
+      renderResultPage();
+      updateStats();
+      renderStatusChart();
+      
+      // 更新导出按钮状态
+      document.getElementById('export-btn').disabled = matchedData.length === 0;
+      
+      showToast(`查询完成，共找到 ${matchedData.length} 条记录`, 'success');
+    }
+
+    // 渲染结果分页
+    function renderResultPage() {
+      const resultBody = document.getElementById('result-body');
+      const noResult = document.getElementById('no-result');
+      const resultTable = document.getElementById('result-table');
+      const pagination = document.getElementById('pagination');
+      const pageStart = document.getElementById('page-start');
+      const pageEnd = document.getElementById('page-end');
+      const totalRecords = document.getElementById('total-records');
+      const pageInfo = document.getElementById('page-info');
+      const prevPageBtn = document.getElementById('prev-page');
+      const nextPageBtn = document.getElementById('next-page');
+      
+      resultBody.innerHTML = '';
+      
+      if (appData.resultData.length === 0) {
+        noResult.classList.remove('hidden');
+        resultTable.classList.add('hidden');
+        pagination.classList.add('hidden');
+        return;
+      }
+      
+      noResult.classList.add('hidden');
+      resultTable.classList.remove('hidden');
+      pagination.classList.remove('hidden');
+      
+      // 计算分页
+      const totalPages = Math.ceil(appData.resultData.length / appData.pageSize);
+      const startIndex = (appData.currentPage - 1) * appData.pageSize;
+      const endIndex = Math.min(startIndex + appData.pageSize, appData.resultData.length);
+      const currentPageData = appData.resultData.slice(startIndex, endIndex);
+      
+      // 渲染当前页数据
+      currentPageData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.className = (index % 2 === 0) ? 'border-t border-gray-200' : 'border-t border-gray-200 bg-gray-50';
+        
+        // 状态样式
+        let statusClass = 'text-gray-600';
+        if (item.状态 === '在线') statusClass = 'text-success';
+        if (item.状态 === '离线') statusClass = 'text-danger';
+        
+        row.innerHTML = `
+          <td class="px-3 py-2">${item.日期}</td>
+          <td class="px-3 py-2">${item.报班时段}</td>
+          <td class="px-3 py-2">${item.员工所属五级部门}</td>
+          <td class="px-3 py-2">${item.所属行政处}</td>
+          <td class="px-3 py-2">${item.ERP}</td>
+          <td class="px-3 py-2">${item.姓名}</td>
+          <td class="px-3 py-2">${item.账号}</td>
+          <td class="px-3 py-2 ${statusClass}">${item.状态}</td>
+        `;
+        resultBody.appendChild(row);
+      });
+      
+      // 更新分页信息
+      pageStart.textContent = startIndex + 1;
+      pageEnd.textContent = endIndex;
+      totalRecords.textContent = appData.resultData.length;
+      pageInfo.textContent = `第 ${appData.currentPage} 页 / 共 ${totalPages} 页`;
+      
+      // 更新分页按钮状态
+      prevPageBtn.disabled = appData.currentPage === 1;
+      nextPageBtn.disabled = appData.currentPage === totalPages;
+    }
+
+    // 更新统计信息
+    function updateStats() {
+      const statsContainer = document.getElementById('stats-container');
+      const totalCount = document.getElementById('total-count');
+      const onlineCount = document.getElementById('online-count');
+      const offlineCount = document.getElementById('offline-count');
+      const deptCount = document.getElementById('dept-count');
+      
+      if (appData.resultData.length === 0) {
+        statsContainer.classList.add('hidden');
+        return;
+      }
+      
+      statsContainer.classList.remove('hidden');
+      
+      // 计算统计数据
+      const total = appData.resultData.length;
+      const online = appData.resultData.filter(item => item.状态 === '在线').length;
+      const offline = appData.resultData.filter(item => item.状态 === '离线').length;
+      const depts = new Set(appData.resultData.map(item => item.员工所属五级部门));
+      
+      // 更新统计显示
+      totalCount.textContent = total;
+      onlineCount.textContent = online;
+      offlineCount.textContent = offline;
+      deptCount.textContent = depts.size;
+    }
+
+    // 渲染状态分布图表
+    function renderStatusChart() {
+      const chartContainer = document.getElementById('chart-container');
+      
+      if (appData.resultData.length === 0) {
+        chartContainer.classList.add('hidden');
+        return;
+      }
+      
+      chartContainer.classList.remove('hidden');
+      
+      // 统计状态分布
+      const statusCounts = {};
+      appData.resultData.forEach(item => {
+        statusCounts[item.状态] = (statusCounts[item.状态] || 0) + 1;
+      });
+      
+      // 准备图表数据
+      const labels = Object.keys(statusCounts);
+      const data = Object.values(statusCounts);
+      const backgroundColors = labels.map(status => {
+        if (status === '在线') return '#00B42A';
+        if (status === '离线') return '#F53F3F';
+        return '#86909C';
+      });
+      
+      // 销毁现有图表
+      if (appData.statusChart) {
+        appData.statusChart.destroy();
+      }
+      
+      // 创建新图表
+      const ctx = document.getElementById('status-chart').getContext('2d');
+      appData.statusChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: backgroundColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+            },
+            title: {
+              display: true,
+              text: '人员状态分布'
+            }
+          }
+        }
+      });
+    }
+
+    // 重置筛选条件
+    function resetFilter() {
+      document.getElementById('filter-date').value = '';
+      document.getElementById('filter-time-period').value = '';
+      document.getElementById('filter-dept').value = '';
+      document.getElementById('filter-erp').value = '';
+      document.getElementById('filter-account').value = '';
+    }
+
+    // 导出数据
+    function exportData() {
+      if (appData.resultData.length === 0) {
+        showToast('没有可导出的数据', 'warning');
+        return;
+      }
+      
+      // 准备导出数据
+      const exportData = appData.resultData.map(item => ({
+        '日期': item.日期,
+        '报班时段': item.报班时段,
+        '员工所属五级部门': item.员工所属五级部门,
+        '所属行政处': item.所属行政处,
+        'ERP': item.ERP,
+        '姓名': item.姓名,
+        '账号': item.账号,
+        '状态': item.状态
+      }));
+      
+      // 创建工作簿和工作表
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '人员情况数据');
+      
+      // 生成文件名（包含当前日期）
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `人员情况数据_${dateStr}.xlsx`;
+      
+      // 导出文件
+      XLSX.writeFile(workbook, fileName);
+      
+      showToast('数据导出成功', 'success');
+    }
+
+    // 从本地存储加载数据
+    function loadDataFromStorage() {
+      const savedRosterData = localStorage.getItem('rosterData');
+      const savedOnlineData = localStorage.getItem('onlineData');
+      const savedErpData = localStorage.getItem('erpData');
+      
+      if (savedRosterData) {
+        appData.rosterData = JSON.parse(savedRosterData);
+      }
+      
+      if (savedOnlineData) {
+        appData.onlineData = JSON.parse(savedOnlineData);
+      }
+      
+      if (savedErpData) {
+        appData.erpData = JSON.parse(savedErpData);
+      }
+      
+      // 更新UI
+      renderRosterList();
+      renderOnlineList();
+      renderErpList();
+    }
+
+    // 保存数据到本地存储
+    function saveDataToStorage() {
+      localStorage.setItem('rosterData', JSON.stringify(appData.rosterData));
+      localStorage.setItem('onlineData', JSON.stringify(appData.onlineData));
+      localStorage.setItem('erpData', JSON.stringify(appData.erpData));
+    }
+
+    // 显示提示信息
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      
+      // 设置样式
+      toast.className = 'fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50';
+      
+      switch (type) {
+        case 'success':
+          toast.classList.add('bg-success', 'text-white');
+          toast.innerHTML = '<i class="fa fa-check-circle mr-2"></i>' + message;
+          break;
+        case 'error':
+          toast.classList.add('bg-danger', 'text-white');
+          toast.innerHTML = '<i class="fa fa-exclamation-circle mr-2"></i>' + message;
+          break;
+        case 'warning':
+          toast.classList.add('bg-warning', 'text-white');
+          toast.innerHTML = '<i class="fa fa-warning mr-2"></i>' + message;
+          break;
+        default:
+          toast.classList.add('bg-primary', 'text-white');
+          toast.innerHTML = '<i class="fa fa-info-circle mr-2"></i>' + message;
+      }
+      
+      // 显示提示
+      setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+      }, 100);
+      
+      // 自动隐藏
+      setTimeout(() => {
+        toast.classList.add('translate-x-full');
+      }, 3000);
+    }
+
+    // 格式化日期
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      const weekday = weekdays[date.getDay()];
+      
+      return `${year}-${month}-${day} ${weekday}`;
+    }
+
+    // 格式化日期时间
+    function formatDateTime(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+  </script>
+</body>
+</html>
