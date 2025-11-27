@@ -89,7 +89,7 @@
             <textarea id="roster-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
           
-          <button id="roster-import-btn" onclick="handleRosterPasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+          <button id="roster-import-btn" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
             <i class="fa fa-paste mr-2"></i>导入数据
           </button>
           <div class="mt-3 text-xs text-gray-500">
@@ -140,7 +140,7 @@
             <textarea id="online-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
           
-          <button id="online-import-btn" onclick="handleOnlinePasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+          <button id="online-import-btn" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
             <i class="fa fa-paste mr-2"></i>导入数据
           </button>
           <div class="mt-3 text-xs text-gray-500">
@@ -159,7 +159,7 @@
             <textarea id="erp-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
           
-          <button id="erp-import-btn" onclick="handleErpPasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+          <button id="erp-import-btn" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
             <i class="fa fa-paste mr-2"></i>导入数据
           </button>
           <div class="mt-3 text-xs text-gray-500">
@@ -300,10 +300,10 @@
             </div>
             <div>
               <label class="block text-xs text-gray-500 mb-1">状态</label>
-              <select id="filter-status" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
-                <option value="">全部状态</option>
-                <!-- 状态选项将动态添加 -->
-              </select>
+              <button id="status-select-btn" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm flex items-center justify-between">
+                <span id="selected-status-text">离线, 挂起</span>
+                <i class="fa fa-chevron-down text-gray-400"></i>
+              </button>
             </div>
             <div>
               <label class="block text-xs text-gray-500 mb-1">ERP</label>
@@ -348,9 +348,20 @@
           </div>
         </div>
         
-        <!-- 图表区域 -->
-        <div id="chart-container" class="hidden mb-6 h-64">
-          <canvas id="status-chart"></canvas>
+        <!-- 小组报表区域 -->
+        <div id="group-report-container" class="mb-6">
+          <h3 id="time-period-title" class="text-lg font-medium text-gray-700 mb-4 text-center">时段：<span id="current-time-period">--</span></h3>
+          <div class="overflow-x-auto">
+            <div class="text-center py-8 text-gray-500 hidden" id="group-report-empty">暂无数据</div>
+            <table class="min-w-full text-sm bg-white border border-gray-200 hidden" id="group-report-table">
+              <thead id="group-report-header">
+                <!-- 表头将动态生成 -->
+              </thead>
+              <tbody id="group-report-body">
+                <!-- 报表数据将动态添加 -->
+              </tbody>
+            </table>
+          </div>
         </div>
         
         <!-- 结果表格 -->
@@ -361,13 +372,14 @@
             <thead class="bg-gray-100">
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">日期</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600">报班时段</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">员工所属五级部门</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600">所属行政处</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">报班时段</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">小组</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">优选权益</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">ERP</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">姓名</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600">账号</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">状态</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">账号</th>
               </tr>
             </thead>
             <tbody id="result-body">
@@ -416,8 +428,8 @@
       statusChart: null      // 状态图表实例
     };
 
-    // 初始化页面
-    document.addEventListener('DOMContentLoaded', () => {
+    // 保存DOMContentLoaded的回调函数，稍后调用
+    function initPage() {
       // 设置当前日期
       const today = new Date();
       const dateStr = today.toISOString().split('T')[0];
@@ -450,12 +462,16 @@
       
       // 更新部门和状态下拉框
       updateDynamicDropdowns();
-    });
+    }
 
     // 初始化事件监听
     function initEventListeners() {
-      // ERP对照表导入已改为粘贴方式，通过按钮onclick直接调用handleErpPasteImport
-      // 已移除文件上传相关的事件监听器
+      // ERP对照表导入粘贴按钮事件
+      const erpImportBtn = document.getElementById('erp-import-btn');
+      if (erpImportBtn) {
+        erpImportBtn.addEventListener('click', handleErpPasteImport);
+        console.log('ERP导入按钮事件监听已绑定');
+      }
       
       // 在线人力数据粘贴导入按钮事件
       const onlineImportBtn = document.getElementById('online-import-btn');
@@ -467,15 +483,8 @@
       // 班表数据粘贴导入按钮事件
       const rosterImportBtn = document.getElementById('roster-import-btn');
       if (rosterImportBtn) {
-        // 先移除可能存在的旧事件监听
-        const newImportBtn = rosterImportBtn.cloneNode(true);
-        rosterImportBtn.parentNode.replaceChild(newImportBtn, rosterImportBtn);
-        // 添加新的事件监听
-        newImportBtn.addEventListener('click', function() {
-          console.log('班表导入按钮被点击');
-          handleRosterPasteImport();
-        });
-        console.log('班表导入按钮事件监听已重新绑定');
+        rosterImportBtn.addEventListener('click', handleRosterPasteImport);
+        console.log('班表导入按钮事件监听已绑定');
       } else {
         console.error('未找到班表导入按钮元素');
       }
@@ -500,6 +509,36 @@
           appData.currentPage++;
           renderResultPage();
         }
+      });
+      
+      // 设置默认日期为当天
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('filter-date').value = today;
+      
+      // 设置默认时段与人力在线情况中的时段选择同步
+      const onlineTimePeriod = document.getElementById('online-time-period');
+      const filterTimePeriod = document.getElementById('filter-time-period');
+      
+      // 如果online-time-period有选中值，则使用该值
+      if (onlineTimePeriod && onlineTimePeriod.value) {
+        filterTimePeriod.value = onlineTimePeriod.value;
+      } else {
+        // 否则根据当前时间设置默认值
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        if (currentHour < 8) {
+          filterTimePeriod.value = '00:00-08:00';
+        } else if (currentHour < 16) {
+          filterTimePeriod.value = '08:00-16:00';
+        } else {
+          filterTimePeriod.value = '16:00-24:00';
+        }
+      }
+      
+      // 添加事件监听，当online-time-period变化时同步更新filter-time-period
+      onlineTimePeriod.addEventListener('change', function() {
+        document.getElementById('filter-time-period').value = this.value;
       });
     }
 
@@ -1214,7 +1253,7 @@
     // 更新动态下拉框（部门和状态）
     function updateDynamicDropdowns() {
       updateDepartmentDropdown();
-      updateStatusDropdown();
+      initStatusSelection();
     }
 
     // 更新部门下拉框
@@ -1244,31 +1283,143 @@
       }
     }
 
-    // 更新状态下拉框（动态拉取）
-    function updateStatusDropdown() {
-      const statusSelect = document.getElementById('filter-status');
-      const statuses = getAllStatuses();
+    // 创建状态选择模态框
+    function createStatusModal() {
+      // 检查模态框是否已存在
+      if (document.getElementById('status-modal')) return;
       
-      // 保存当前选中值
-      const currentValue = statusSelect.value;
+      const modalHtml = `
+        <div id="status-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+          <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex items-center justify-between">
+              <h3 class="font-semibold text-lg">选择状态</h3>
+              <button id="close-status-modal" class="text-gray-500 hover:text-gray-700">
+                <i class="fa fa-times text-xl"></i>
+              </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-grow">
+              <div id="status-options" class="space-y-2">
+                <!-- 状态选项将动态添加 -->
+              </div>
+            </div>
+            <div class="p-4 border-t flex justify-end space-x-2">
+              <button id="select-all-status" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100">
+                全选
+              </button>
+              <button id="close-status-select" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
       
-      // 清除现有选项（保留"全部状态"）
-      while (statusSelect.options.length > 1) {
-        statusSelect.remove(1);
-      }
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
       
-      // 添加状态选项
-      statuses.forEach(status => {
-        const option = document.createElement('option');
-        option.value = status;
-        option.textContent = status;
-        statusSelect.appendChild(option);
+      // 添加事件监听
+      document.getElementById('status-select-btn').addEventListener('click', function() {
+        document.getElementById('status-modal').classList.remove('hidden');
       });
       
-      // 恢复选中值（如果存在）
-      if (currentValue && statuses.includes(currentValue)) {
-        statusSelect.value = currentValue;
+      document.getElementById('close-status-modal').addEventListener('click', function() {
+        document.getElementById('status-modal').classList.add('hidden');
+      });
+      
+      document.getElementById('close-status-select').addEventListener('click', function() {
+        document.getElementById('status-modal').classList.add('hidden');
+        updateSelectedStatusText();
+      });
+      
+      document.getElementById('select-all-status').addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('#status-options input[type="checkbox"]');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        
+        checkboxes.forEach(cb => {
+          cb.checked = !allChecked;
+        });
+        
+        this.textContent = allChecked ? '全选' : '取消全选';
+      });
+      
+      // 点击模态框背景关闭
+      document.getElementById('status-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.add('hidden');
+          updateSelectedStatusText();
+        }
+      });
+    }
+    
+    // 更新状态选项
+    function updateStatusOptions() {
+      const statusContainer = document.getElementById('status-options');
+      const statuses = getAllStatuses();
+      
+      // 清除现有选项
+      statusContainer.innerHTML = '';
+      
+      // 定义状态优先级顺序
+      const statusPriority = {
+        '离线': 0,
+        '挂起': 1,
+        '在线': 2,
+        '已请假': 3
+      };
+      
+      // 按优先级排序状态
+      const sortedStatuses = [...statuses].sort((a, b) => {
+        const priorityA = statusPriority[a] !== undefined ? statusPriority[a] : 999;
+        const priorityB = statusPriority[b] !== undefined ? statusPriority[b] : 999;
+        return priorityA - priorityB;
+      });
+      
+      // 添加状态选项
+      sortedStatuses.forEach(status => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center';
+        div.innerHTML = `
+          <input type="checkbox" id="status-${status}" value="${status}" class="w-4 h-4 text-gray-600 mr-2">
+          <label for="status-${status}" class="text-sm cursor-pointer">${status}</label>
+        `;
+        
+        const checkbox = div.querySelector('input');
+        // 默认选中离线和挂起
+        if (status === '离线' || status === '挂起') {
+          checkbox.checked = true;
+        }
+        
+        statusContainer.appendChild(div);
+      });
+    }
+    
+    // 获取选中的状态
+    function getSelectedStatuses() {
+      return Array.from(document.querySelectorAll('#status-options input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+    }
+    
+    // 更新显示的选中状态文本
+    function updateSelectedStatusText() {
+      const selectedStatuses = getSelectedStatuses();
+      const textElement = document.getElementById('selected-status-text');
+      
+      if (selectedStatuses.length === 0) {
+        textElement.textContent = '请选择状态';
+        textElement.className = 'text-gray-400';
+      } else if (selectedStatuses.length > 2) {
+        textElement.textContent = `${selectedStatuses.slice(0, 2).join(', ')} 等${selectedStatuses.length}项`;
+        textElement.className = '';
+      } else {
+        textElement.textContent = selectedStatuses.join(', ');
+        textElement.className = '';
       }
+    }
+    
+    // 初始化状态选择功能
+    function initStatusSelection() {
+      createStatusModal();
+      updateStatusOptions();
+      updateSelectedStatusText();
     }
 
     // 查询当天数据
@@ -1302,7 +1453,10 @@
       const filterDate = document.getElementById('filter-date').value;
       const filterTimePeriod = document.getElementById('filter-time-period').value;
       const filterDept = document.getElementById('filter-dept').value;
-      const filterStatus = document.getElementById('filter-status').value;
+      
+      // 获取选中的状态
+      const selectedStatuses = getSelectedStatuses();
+        
       const filterErp = document.getElementById('filter-erp').value.trim().toLowerCase();
       const filterAccount = document.getElementById('filter-account').value.trim().toLowerCase();
       
@@ -1354,6 +1508,7 @@
               报班时段: rosterItem.报班时段,
               员工所属五级部门: rosterItem.员工所属五级部门,
               所属行政处: dept,  // 显示行政处
+              优选权益: rosterItem.优选权益 || '',
               ERP: rosterItem.ERP,
               姓名: rosterItem.姓名,
               账号: account || '',
@@ -1376,6 +1531,7 @@
               报班时段: rosterItem.报班时段,
               员工所属五级部门: rosterItem.员工所属五级部门,
               所属行政处: onlineItem ? onlineItem.所属行政处 : '',
+              优选权益: rosterItem.优选权益 || '',
               ERP: rosterItem.ERP,
               姓名: rosterItem.姓名,
               账号: account || '',
@@ -1390,6 +1546,7 @@
             报班时段: rosterItem.报班时段,
             员工所属五级部门: rosterItem.员工所属五级部门,
             所属行政处: account ? accountToDeptMap[account] || '' : '',  // 显示行政处
+            优选权益: rosterItem.优选权益 || '',
             ERP: rosterItem.ERP,
             姓名: rosterItem.姓名,
             账号: account || '',
@@ -1402,20 +1559,40 @@
           if (filterDate && item.日期 !== filterDate) return false;
           if (filterTimePeriod && item.报班时段 !== filterTimePeriod) return false;
           if (filterDept && item.员工所属五级部门 !== filterDept) return false;
-          if (filterStatus && item.状态 !== filterStatus) return false;
+          if (selectedStatuses.length > 0 && !selectedStatuses.includes(item.状态)) return false;
           if (filterErp && !item.ERP.toLowerCase().includes(filterErp)) return false;
           if (filterAccount && !item.账号.toLowerCase().includes(filterAccount)) return false;
           return true;
         });
       
+      // 定义状态优先级
+      const statusOrder = {
+        '离线': 0,
+        '挂起': 1,
+        '在线': 2,
+        '已请假': 3
+      };
+      
+      // 按小组升序，同小组内按状态优先级排序
+      const sortedData = matchedData.sort((a, b) => {
+        // 首先按小组升序排序
+        if (a.所属行政处 !== b.所属行政处) {
+          return a.所属行政处.localeCompare(b.所属行政处);
+        }
+        // 同小组内按状态优先级排序
+        const priorityA = statusOrder[a.状态] !== undefined ? statusOrder[a.状态] : 999;
+        const priorityB = statusOrder[b.状态] !== undefined ? statusOrder[b.状态] : 999;
+        return priorityA - priorityB;
+      });
+      
       // 保存结果数据
-      appData.resultData = matchedData;
+      appData.resultData = sortedData;
       appData.currentPage = 1;
       
       // 渲染结果
       renderResultPage();
       updateStats();
-      renderStatusChart();
+      renderGroupReport(); // 使用小组报表替代
       
       // 更新导出按钮状态
       document.getElementById('export-btn').disabled = matchedData.length === 0;
@@ -1468,13 +1645,14 @@
         
         row.innerHTML = `
           <td class="px-3 py-2">${item.日期}</td>
-          <td class="px-3 py-2">${item.报班时段}</td>
           <td class="px-3 py-2">${item.员工所属五级部门}</td>
+          <td class="px-3 py-2">${item.报班时段}</td>
           <td class="px-3 py-2">${item.所属行政处}</td>
+          <td class="px-3 py-2">${item.优选权益 || ''}</td>
           <td class="px-3 py-2">${item.ERP}</td>
           <td class="px-3 py-2">${item.姓名}</td>
-          <td class="px-3 py-2">${item.账号}</td>
           <td class="px-3 py-2 ${statusClass}">${item.状态}</td>
+          <td class="px-3 py-2">${item.账号}</td>
         `;
         resultBody.appendChild(row);
       });
@@ -1518,63 +1696,223 @@
       leaveCount.textContent = leave;
     }
 
-    // 渲染状态分布图表
-    function renderStatusChart() {
-      const chartContainer = document.getElementById('chart-container');
+    // 获取仅按日期和时段筛选的数据（用于小组报表）
+    function getDateAndTimeFilteredData() {
+      const filterDate = document.getElementById('filter-date').value;
+      const filterTimePeriod = document.getElementById('filter-time-period').value;
       
-      if (appData.resultData.length === 0) {
-        chartContainer.classList.add('hidden');
+      // 检查是否有必要的数据
+      if (appData.rosterData.length === 0 || appData.onlineData.length === 0 || appData.erpData.length === 0) {
+        return [];
+      }
+      
+      // 合并所有数据
+      const allRosterData = appData.rosterData.flatMap(item => item.data);
+      const allOnlineData = appData.onlineData.flatMap(item => item.data);
+      
+      // 创建ERP到账号的映射
+      const erpToAccountMap = {};
+      appData.erpData.forEach(item => {
+        item.data.forEach(row => {
+          erpToAccountMap[row.ERP.toLowerCase()] = row.账号;
+        });
+      });
+      
+      // 创建账号到在线状态和所属行政处的映射
+      const accountToOnlineMap = {};
+      const accountToDeptMap = {};
+      allOnlineData.forEach(item => {
+        accountToOnlineMap[item.账号] = item;
+        accountToDeptMap[item.账号] = item.所属行政处;
+      });
+      
+      // 处理数据并应用筛选
+      return allRosterData.map(rosterItem => {
+        const account = erpToAccountMap[rosterItem.ERP.toLowerCase()];
+        const onlineItem = accountToOnlineMap[account];
+        
+        // 不同状态的处理逻辑（与原函数保持一致）
+        if (rosterItem.状态 === '已请假') {
+          return {
+            日期: rosterItem.日期,
+            报班时段: rosterItem.报班时段,
+            员工所属五级部门: rosterItem.员工所属五级部门,
+            所属行政处: account ? accountToDeptMap[account] || '' : '',
+            优选权益: rosterItem.优选权益 || '',
+            ERP: rosterItem.ERP,
+            姓名: rosterItem.姓名,
+            账号: account || '',
+            状态: '已请假'
+          };
+        } else if (rosterItem.状态 === '已报名') {
+          return {
+            日期: rosterItem.日期,
+            报班时段: rosterItem.报班时段,
+            员工所属五级部门: rosterItem.员工所属五级部门,
+            所属行政处: account ? accountToDeptMap[account] || '' : '',
+            优选权益: rosterItem.优选权益 || '',
+            ERP: rosterItem.ERP,
+            姓名: rosterItem.姓名,
+            账号: account || '',
+            状态: onlineItem ? onlineItem.状态 : '未找到在线记录'
+          };
+        } else {
+          return {
+            日期: rosterItem.日期,
+            报班时段: rosterItem.报班时段,
+            员工所属五级部门: rosterItem.员工所属五级部门,
+            所属行政处: account ? accountToDeptMap[account] || '' : '',
+            优选权益: rosterItem.优选权益 || '',
+            ERP: rosterItem.ERP,
+            姓名: rosterItem.姓名,
+            账号: account || '',
+            状态: rosterItem.状态
+          };
+        }
+      })
+      .filter(item => item !== null)
+      // 只应用日期和时段筛选
+      .filter(item => {
+        if (filterDate && item.日期 !== filterDate) return false;
+        if (filterTimePeriod && item.报班时段 !== filterTimePeriod) return false;
+        return true;
+      });
+    }
+    
+    // 渲染小组报表
+    function renderGroupReport() {
+      const emptyElement = document.getElementById('group-report-empty');
+      const tableElement = document.getElementById('group-report-table');
+      const tbodyElement = document.getElementById('group-report-body');
+      const headerElement = document.getElementById('group-report-header');
+      const currentTimePeriodElement = document.getElementById('current-time-period');
+      
+      // 更新显示当前筛选的时段值
+      const filterTimePeriod = document.getElementById('filter-time-period').value;
+      currentTimePeriodElement.textContent = filterTimePeriod || '所有时段';
+      
+      // 清空表格内容
+      tbodyElement.innerHTML = '';
+      headerElement.innerHTML = '';
+      
+      // 获取仅按日期和时段筛选的数据
+      const dateAndTimeFilteredData = getDateAndTimeFilteredData();
+      
+      if (dateAndTimeFilteredData.length === 0) {
+        emptyElement.classList.remove('hidden');
+        tableElement.classList.add('hidden');
         return;
       }
       
-      chartContainer.classList.remove('hidden');
+      emptyElement.classList.add('hidden');
+      tableElement.classList.remove('hidden');
       
-      // 统计状态分布
-      const statusCounts = {};
-      appData.resultData.forEach(item => {
-        statusCounts[item.状态] = (statusCounts[item.状态] || 0) + 1;
+      // 从数据中提取唯一的优选权益值
+      const uniqueBenefits = [...new Set(dateAndTimeFilteredData.map(item => item.优选权益 || '无'))];
+      // 确保'无'始终在最前面，其他按字母排序
+      const allBenefits = uniqueBenefits.sort((a, b) => {
+        if (a === '无') return -1;
+        if (b === '无') return 1;
+        return a.localeCompare(b);
       });
       
-      // 准备图表数据
-      const labels = Object.keys(statusCounts);
-      const data = Object.values(statusCounts);
-      const backgroundColors = labels.map(status => {
-        if (status === '在线') return '#00B42A';
-        if (status === '离线') return '#F53F3F';
-        if (status === '已请假') return '#FF7D00';
-        return '#86909C';
+      // 生成动态表头
+      const headerRow1 = document.createElement('tr');
+      headerRow1.className = 'bg-gray-100';
+      
+      const headerCellDept = document.createElement('th');
+      headerCellDept.rowSpan = 2;
+      headerCellDept.className = 'px-4 py-2 text-left font-medium text-gray-600 border border-gray-200';
+      headerCellDept.textContent = '所属行政处';
+      headerRow1.appendChild(headerCellDept);
+      
+      allBenefits.forEach(benefit => {
+        const headerCell = document.createElement('th');
+        headerCell.colSpan = 3;
+        headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
+        headerCell.textContent = `优选权益: ${benefit}`;
+        headerRow1.appendChild(headerCell);
       });
       
-      // 销毁现有图表
-      if (appData.statusChart) {
-        appData.statusChart.destroy();
-      }
+      const headerRow2 = document.createElement('tr');
+      headerRow2.className = 'bg-gray-100';
       
-      // 创建新图表
-      const ctx = document.getElementById('status-chart').getContext('2d');
-      appData.statusChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: backgroundColors,
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'right',
-            },
-            title: {
-              display: true,
-              text: '人员状态分布'
-            }
-          }
+      allBenefits.forEach(() => {
+        ['在线', '离线', '已请假'].forEach(status => {
+          const headerCell = document.createElement('th');
+          headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
+          headerCell.textContent = status;
+          headerRow2.appendChild(headerCell);
+        });
+      });
+      
+      headerElement.appendChild(headerRow1);
+      headerElement.appendChild(headerRow2);
+      
+      // 统计每个行政处各优选权益的状态分布
+      const groupStats = {};
+      
+      dateAndTimeFilteredData.forEach(item => {
+        const group = item.所属行政处 || '未分组';
+        const benefit = item.优选权益 || '无';
+        
+        // 初始化分组统计对象
+        if (!groupStats[group]) {
+          groupStats[group] = {
+            所属行政处: group,
+            权益统计: {}
+          };
+          
+          // 初始化所有存在的优选权益的统计
+          allBenefits.forEach(b => {
+            groupStats[group].权益统计[b] = {
+              在线人数: 0,
+              离线人数: 0,
+              已请假人数: 0
+            };
+          });
         }
+        
+        // 根据状态统计人数
+        switch (item.状态) {
+          case '在线':
+            groupStats[group].权益统计[benefit].在线人数++;
+            break;
+          case '离线':
+            groupStats[group].权益统计[benefit].离线人数++;
+            break;
+          case '已请假':
+            groupStats[group].权益统计[benefit].已请假人数++;
+            break;
+        }
+      });
+      
+      // 将统计结果转换为数组并按所属行政处排序
+      const statsArray = Object.values(groupStats).sort((a, b) => {
+        return a.所属行政处.localeCompare(b.所属行政处);
+      });
+      
+      // 渲染表格行
+      statsArray.forEach(stat => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+        
+        // 创建行政处单元格
+        let rowHtml = `<td class="px-4 py-2 border border-gray-200">${stat.所属行政处}</td>`;
+        
+        // 为每个优选权益创建状态单元格
+        allBenefits.forEach(benefit => {
+          const benefitStats = stat.权益统计[benefit] || {在线人数: 0, 离线人数: 0, 已请假人数: 0};
+          
+          rowHtml += `
+            <td class="px-4 py-2 text-center border border-gray-200 text-green-600">${benefitStats.在线人数}</td>
+            <td class="px-4 py-2 text-center border border-gray-200 text-red-600">${benefitStats.离线人数}</td>
+            <td class="px-4 py-2 text-center border border-gray-200 text-orange-600">${benefitStats.已请假人数}</td>
+          `;
+        });
+        
+        row.innerHTML = rowHtml;
+        tbodyElement.appendChild(row);
       });
     }
 
@@ -1583,7 +1921,17 @@
       document.getElementById('filter-date').value = '';
       document.getElementById('filter-time-period').value = '';
       document.getElementById('filter-dept').value = '';
-      document.getElementById('filter-status').value = '';
+      // 重置所有状态选择
+      const checkboxes = document.querySelectorAll('#status-options input[type="checkbox"]');
+      checkboxes.forEach((cb, index) => {
+        // 保留默认选中离线和挂起
+        if (index < 2) {
+          cb.checked = true;
+        } else {
+          cb.checked = false;
+        }
+      });
+      updateSelectedStatusText();
       document.getElementById('filter-erp').value = '';
       document.getElementById('filter-account').value = '';
     }
@@ -1733,9 +2081,11 @@
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
       const seconds = String(date.getSeconds()).padStart(2, '0');
-      
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
+    
+    // 所有函数定义完成后，绑定DOMContentLoaded事件
+    document.addEventListener('DOMContentLoaded', initPage);
   </script>
 </body>
 </html>
