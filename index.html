@@ -83,20 +83,28 @@
           <h3 class="font-medium text-gray-700 mb-3 flex items-center">
             <i class="fa fa-calendar-check-o text-primary mr-2"></i>1.班表数据（导入群内发送当天的班表）
           </h3>
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="roster-upload-area">
-            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
-            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
-            <input type="file" id="roster-file" class="hidden" accept=".xlsx">
+          
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">请粘贴班表数据（包含表头）</label>
+            <textarea id="roster-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
+          
+          <button id="roster-import-btn" onclick="handleRosterPasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+            <i class="fa fa-paste mr-2"></i>导入数据
+          </button>
           <div class="mt-3 text-xs text-gray-500">
-            <p>表头要求：日期、服务类型、业务条线、员工所属四级部门、员工所属五级部门、ERP、姓名、报班时段、报班类型、班表倍数、状态、报班时间、接待量、优选权益</p>
+            <p><strong>操作提示：</strong></p>
+            <p>1. 表头要求：日期、服务类型、业务条线、员工所属四级部门、员工所属五级部门、ERP、姓名、报班时段、报班类型、班表倍数、状态、报班时间、接待量、优选权益</p>
+            <p>2. 可直接从Excel表格中复制粘贴数据（包含表头）</p>
+            <p>3. 系统会自动识别数据格式，支持制表符和空格分隔</p>
+            <p>4. 导入后可在下方列表查看导入的数据信息</p>
           </div>
         </div>
         
         <!-- 人力在线情况导入 -->
         <div class="bg-white rounded-lg p-5 card-shadow transition-all hover:shadow-lg">
           <h3 class="font-medium text-gray-700 mb-3 flex items-center">
-            <i class="fa fa-users text-primary mr-2"></i>2.人力在线情况（客服管家粘贴出来表，去掉上面的无效数据行，保留表头+下面数据即可；务必选择好日期和时段）
+            <i class="fa fa-users text-primary mr-2"></i>2.人力在线情况（客服管家粘贴出来表，去掉上面的无效数据行，保留表头+下面数据即可）
           </h3>
           
           <div class="mb-3 grid grid-cols-2 gap-3">
@@ -127,13 +135,16 @@
             </div>
           </div>
           
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="online-upload-area">
-            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
-            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
-            <input type="file" id="online-file" class="hidden" accept=".xlsx">
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">请粘贴客服管家数据（包含表头）</label>
+            <textarea id="online-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
+          
+          <button id="online-import-btn" onclick="handleOnlinePasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+            <i class="fa fa-paste mr-2"></i>导入数据
+          </button>
           <div class="mt-3 text-xs text-gray-500">
-            <p>表头要求：所属行政处、账号、客服姓名、状态、正在接待、平均正在咨询量、在线时长、挂起时长、满意度</p>
+            <p>表头包含：所属行政处、账号、客服姓名、状态、正在接待、平均正在咨询量、在线时长、挂起时长、满意度</p>
           </div>
         </div>
         
@@ -142,7 +153,7 @@
           <h3 class="font-medium text-gray-700 mb-3 flex items-center">
             <i class="fa fa-exchange text-primary mr-2"></i>ERP对照表（使用我提供的全八大组ERP名单，每月更新一次即可）
           </h3>
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="erp-upload-area">
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="erp-upload-area" onclick="document.getElementById('erp-file').click()">
             <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
             <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
             <input type="file" id="erp-file" class="hidden" accept=".xlsx">
@@ -172,6 +183,7 @@
                   <thead class="bg-gray-100">
                     <tr>
                       <th class="px-3 py-2 text-left font-medium text-gray-600">导入时间</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600">日期范围</th>
                       <th class="px-3 py-2 text-left font-medium text-gray-600">数据量</th>
                       <th class="px-3 py-2 text-left font-medium text-gray-600">操作</th>
                     </tr>
@@ -407,6 +419,22 @@
       document.getElementById('online-date').value = dateStr;
       document.getElementById('filter-date').value = dateStr;
       
+      // 设置默认时段为当前时间对应的时段
+      const currentHour = today.getHours();
+      const timePeriods = document.getElementById('online-time-period').options;
+      for (let i = 0; i < timePeriods.length; i++) {
+        const periodStartHour = parseInt(timePeriods[i].value.split('-')[0].split(':')[0]);
+        if (currentHour === periodStartHour) {
+          timePeriods[i].selected = true;
+          break;
+        } else if (currentHour < periodStartHour && i > 0) {
+          timePeriods[i-1].selected = true;
+          break;
+        } else if (i === timePeriods.length - 1) {
+          timePeriods[i].selected = true;
+        }
+      }
+      
       // 从本地存储加载数据
       loadDataFromStorage();
       
@@ -419,28 +447,48 @@
 
     // 初始化事件监听
     function initEventListeners() {
-      // 上传区域点击事件
-      document.getElementById('roster-upload-area').addEventListener('click', () => {
-        document.getElementById('roster-file').click();
-      });
+      // 上传区域点击事件 - 只添加到存在的元素
+      const erpUploadArea = document.getElementById('erp-upload-area');
+      if (erpUploadArea) {
+        erpUploadArea.addEventListener('click', () => {
+          const erpFile = document.getElementById('erp-file');
+          if (erpFile) erpFile.click();
+        });
+      }
       
-      document.getElementById('online-upload-area').addEventListener('click', () => {
-        document.getElementById('online-file').click();
-      });
+      // 拖放事件 - 只设置ERP部分，班表使用粘贴导入
+      if (document.getElementById('erp-upload-area') && document.getElementById('erp-file')) {
+        setupDragDrop('erp-upload-area', 'erp-file');
+      }
       
-      document.getElementById('erp-upload-area').addEventListener('click', () => {
-        document.getElementById('erp-file').click();
-      });
+      // 文件上传处理 - 只处理ERP部分
+      const erpFile = document.getElementById('erp-file');
+      if (erpFile) {
+        erpFile.addEventListener('change', window.handleErpUpload);
+      }
       
-      // 拖放事件
-      setupDragDrop('roster-upload-area', 'roster-file');
-      setupDragDrop('online-upload-area', 'online-file');
-      setupDragDrop('erp-upload-area', 'erp-file');
+      // 在线人力数据粘贴导入按钮事件
+      const onlineImportBtn = document.getElementById('online-import-btn');
+      if (onlineImportBtn) {
+        onlineImportBtn.addEventListener('click', handleOnlinePasteImport);
+        console.log('在线导入按钮事件监听已绑定');
+      }
       
-      // 文件上传处理
-      document.getElementById('roster-file').addEventListener('change', handleRosterUpload);
-      document.getElementById('online-file').addEventListener('change', handleOnlineUpload);
-      document.getElementById('erp-file').addEventListener('change', handleErpUpload);
+      // 班表数据粘贴导入按钮事件
+      const rosterImportBtn = document.getElementById('roster-import-btn');
+      if (rosterImportBtn) {
+        // 先移除可能存在的旧事件监听
+        const newImportBtn = rosterImportBtn.cloneNode(true);
+        rosterImportBtn.parentNode.replaceChild(newImportBtn, rosterImportBtn);
+        // 添加新的事件监听
+        newImportBtn.addEventListener('click', function() {
+          console.log('班表导入按钮被点击');
+          handleRosterPasteImport();
+        });
+        console.log('班表导入按钮事件监听已重新绑定');
+      } else {
+        console.error('未找到班表导入按钮元素');
+      }
       
       // 查询按钮事件
       document.getElementById('query-today-btn').addEventListener('click', queryTodayData);
@@ -507,15 +555,9 @@
           const worksheet = workbook.Sheets[firstSheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          // 验证表头
-          const requiredHeaders = [
-            '日期', '服务类型', '业务条线', '员工所属四级部门', '员工所属五级部门', 
-            'ERP', '姓名', '报班时段', '报班类型', '班表倍数', '状态', 
-            '报班时间', '接待量', '优选权益'
-          ];
-          
-          if (!validateHeaders(jsonData, requiredHeaders)) {
-            showToast('班表数据表头不符合要求', 'error');
+          // 简化验证，确保有数据且格式正确
+          if (!validateHeaders(jsonData)) {
+            showToast('班表数据格式不符合要求，请确保数据完整', 'error');
             return;
           }
           
@@ -549,60 +591,259 @@
       // 重置文件输入
       e.target.value = '';
     }
-
-    // 处理在线情况数据上传
-    function handleOnlineUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+    
+    // 处理班表数据粘贴导入 - 确保全局可访问
+    window.handleRosterPasteImport = function() {
+      const pasteText = document.getElementById('roster-paste-area').value.trim();
+      const importBtn = document.getElementById('roster-import-btn');
       
+      if (!pasteText) {
+        showToast('请粘贴班表数据', 'warning');
+        return;
+      }
+      
+      // 防止重复点击
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>导入中...';
+      
+      try {
+        // 解析粘贴的文本数据（支持制表符和空格分隔）
+        let lines = pasteText.split('\n').filter(line => line.trim());
+        
+        // 自动识别并提取表头开始的数据
+        // 查找包含"日期"的行作为表头
+        let headerIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('日期')) {
+            headerIndex = i;
+            break;
+          }
+        }
+        
+        // 如果找不到表头，尝试查找可能的数据行
+        if (headerIndex === -1) {
+          // 尝试识别可能的数据行结构（包含日期格式等特征）
+          for (let i = 0; i < lines.length; i++) {
+            // 检查是否包含日期格式或多个空格/制表符分隔的值
+            if (lines[i].includes('20') || lines[i].match(/\s{2,}/) || lines[i].includes('\t')) {
+              // 假设前一行可能是表头
+              headerIndex = Math.max(0, i - 1);
+              break;
+            }
+          }
+        }
+        
+        // 如果仍然找不到合适的表头，提示错误
+        if (headerIndex === -1) {
+          showToast('未能识别有效的数据结构，请确保数据包含正确的表头', 'error');
+          return;
+        }
+        
+        // 提取表头和数据行
+        lines = lines.slice(headerIndex);
+        
+        if (lines.length < 2) {
+          showToast('数据格式不正确，至少需要包含表头和一条数据', 'error');
+          return;
+        }
+        
+        const headersLine = lines[0];
+        const dataLines = lines.slice(1);
+        
+        // 使用正则表达式分割（支持制表符、多个空格）
+        const splitLine = (line) => {
+          return line.split(/\t|\s{2,}/).filter(cell => cell.trim() !== '');
+        };
+        
+        const headers = splitLine(headersLine);
+        
+        // 创建JSON数据
+        const jsonData = [];
+        dataLines.forEach(line => {
+          const values = splitLine(line);
+          if (values.length >= 14) { // 至少需要14个字段
+            const rowData = {};
+            // 映射字段（使用固定的字段名称）
+            rowData['日期'] = values[0] || '';
+            rowData['服务类型'] = values[1] || '';
+            rowData['业务条线'] = values[2] || '';
+            rowData['员工所属四级部门'] = values[3] || '';
+            rowData['员工所属五级部门'] = values[4] || '';
+            rowData['ERP'] = values[5] || '';
+            rowData['姓名'] = values[6] || '';
+            rowData['报班时段'] = values[7] || '';
+            rowData['报班类型'] = values[8] || '';
+            rowData['班表倍数'] = values[9] || '';
+            rowData['状态'] = values[10] || '';
+            rowData['报班时间'] = values[11] || '';
+            rowData['接待量'] = values[12] || '';
+            rowData['优选权益'] = values[13] || '';
+            
+            jsonData.push(rowData);
+          }
+        });
+        
+        if (jsonData.length === 0) {
+          showToast('未能识别有效数据，请检查粘贴格式', 'error');
+          return;
+        }
+        
+        // 添加导入信息
+        const importTime = new Date();
+        const rosterItem = {
+          id: 'roster_' + Date.now(),
+          importTime: importTime,
+          data: jsonData,
+          count: jsonData.length
+        };
+        
+        // 替换现有班表数据
+        appData.rosterData = [rosterItem];
+        
+        try {
+          // 保存到本地存储
+          saveDataToStorage();
+          
+          // 更新UI
+          renderRosterList();
+          updateDynamicDropdowns();
+          
+          // 清空文本框
+          document.getElementById('roster-paste-area').value = '';
+          
+          showToast(`班表数据导入成功，共 ${jsonData.length} 条记录`, 'success');
+        } catch (saveError) {
+          if (saveError.name === 'QuotaExceededError') {
+            console.error('保存数据失败，存储空间不足:', saveError);
+            showToast('存储空间不足，请清理浏览器缓存后重试', 'error');
+          } else {
+            throw saveError; // 重新抛出其他类型的错误
+          }
+        }
+      } catch (error) {
+        console.error('解析班表数据失败:', error);
+        showToast('解析班表数据失败，请检查粘贴格式', 'error');
+      } finally {
+        // 恢复按钮状态
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="fa fa-paste mr-2"></i>导入数据';
+      }
+    }
+
+    // 处理在线情况数据粘贴导入 - 确保全局可访问
+    window.handleOnlinePasteImport = function() {
+      const pasteText = document.getElementById('online-paste-area').value.trim();
       const date = document.getElementById('online-date').value;
       const timePeriod = document.getElementById('online-time-period').value;
+      
+      if (!pasteText) {
+        showToast('请粘贴数据', 'warning');
+        return;
+      }
       
       if (!date) {
         showToast('请选择日期', 'warning');
         return;
       }
       
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
-          // 验证表头
-          const requiredHeaders = [
-            '所属行政处', '账号', '客服姓名', '状态', '正在接待', 
-            '平均正在咨询量', '在线时长', '挂起时长', '满意度'
-          ];
-          
-          if (!validateHeaders(jsonData, requiredHeaders)) {
-            showToast('在线情况数据表头不符合要求', 'error');
-            return;
+      try {
+        // 解析粘贴的文本数据（支持制表符和空格分隔）
+        let lines = pasteText.split('\n').filter(line => line.trim());
+        
+        // 自动识别并提取表头开始的数据
+        // 查找包含"所属行政处"的行作为表头
+        let headerIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('所属行政处')) {
+            headerIndex = i;
+            break;
           }
-          
-          // 为每条数据添加日期和时段
-          jsonData.forEach(item => {
-            item.导入日期 = date;
-            item.报班时段 = timePeriod;
-          });
-          
-          // 添加导入信息
-          const importTime = new Date();
-          const onlineItem = {
-            id: 'online_' + Date.now(),
-            date: date,
-            timePeriod: timePeriod,
-            importTime: importTime,
-            data: jsonData,
-            count: jsonData.length
-          };
-          
-          // 添加到在线情况数据列表
-          appData.onlineData.unshift(onlineItem);
-          
+        }
+        
+        // 如果找不到表头，尝试查找可能的数据行
+        if (headerIndex === -1) {
+          // 尝试识别可能的数据行结构（包含账号格式等特征）
+          for (let i = 0; i < lines.length; i++) {
+            // 检查是否包含账号格式或多个空格/制表符分隔的值
+            if (lines[i].includes('-') || lines[i].match(/\s{2,}/) || lines[i].includes('\t')) {
+              // 假设前一行可能是表头
+              headerIndex = Math.max(0, i - 1);
+              break;
+            }
+          }
+        }
+        
+        // 如果仍然找不到合适的表头，提示错误
+        if (headerIndex === -1) {
+          showToast('未能识别有效的数据结构，请确保数据包含正确的表头', 'error');
+          return;
+        }
+        
+        // 提取表头和数据行
+        lines = lines.slice(headerIndex);
+        
+        if (lines.length < 2) {
+          showToast('数据格式不正确，至少需要包含表头和一条数据', 'error');
+          return;
+        }
+        
+        const headersLine = lines[0];
+        const dataLines = lines.slice(1);
+        
+        // 使用正则表达式分割（支持制表符、多个空格）
+        const splitLine = (line) => {
+          return line.split(/\t|\s{2,}/).filter(cell => cell.trim() !== '');
+        };
+        
+        const headers = splitLine(headersLine);
+        
+        // 创建JSON数据
+        const jsonData = [];
+        dataLines.forEach(line => {
+          const values = splitLine(line);
+          if (values.length >= 5) { // 至少需要5个字段
+            const rowData = {};
+            // 映射字段（使用固定的字段名称，不依赖实际表头文本）
+            rowData['所属行政处'] = values[0] || '';
+            rowData['账号'] = values[1] || '';
+            rowData['客服姓名'] = values[2] || '';
+            rowData['状态'] = values[3] || '';
+            rowData['正在接待'] = values[4] || 0;
+            rowData['平均正在咨询量'] = values[5] || 0;
+            rowData['在线时长'] = values[6] || '--';
+            rowData['挂起时长'] = values[7] || '--';
+            rowData['满意度'] = values[8] || '0.0%';
+            
+            jsonData.push(rowData);
+          }
+        });
+        
+        if (jsonData.length === 0) {
+          showToast('未能识别有效数据，请检查粘贴格式', 'error');
+          return;
+        }
+        
+        // 为每条数据添加日期和时段
+        jsonData.forEach(item => {
+          item.导入日期 = date;
+          item.报班时段 = timePeriod;
+        });
+        
+        // 添加导入信息
+        const importTime = new Date();
+        const onlineItem = {
+          id: 'online_' + Date.now(),
+          date: date,
+          timePeriod: timePeriod,
+          importTime: importTime,
+          data: jsonData,
+          count: jsonData.length
+        };
+        
+        // 添加到在线情况数据列表
+        appData.onlineData.unshift(onlineItem);
+        
+        try {
           // 保存到本地存储
           saveDataToStorage();
           
@@ -610,20 +851,26 @@
           renderOnlineList();
           updateDynamicDropdowns();
           
+          // 清空文本框
+          document.getElementById('online-paste-area').value = '';
+          
           showToast(`在线情况数据导入成功，共 ${jsonData.length} 条记录`, 'success');
-        } catch (error) {
-          console.error('解析在线情况数据失败:', error);
-          showToast('解析在线情况数据失败，请检查文件格式', 'error');
+        } catch (saveError) {
+          if (saveError.name === 'QuotaExceededError') {
+            console.error('保存数据失败，存储空间不足:', saveError);
+            showToast('存储空间不足，请清理浏览器缓存后重试', 'error');
+          } else {
+            throw saveError; // 重新抛出其他类型的错误
+          }
         }
-      };
-      reader.readAsArrayBuffer(file);
-      
-      // 重置文件输入
-      e.target.value = '';
+      } catch (error) {
+        console.error('解析在线情况数据失败:', error);
+        showToast('解析在线情况数据失败，请检查粘贴格式', 'error');
+      }
     }
 
-    // 处理ERP对照表上传
-    function handleErpUpload(e) {
+    // 处理ERP对照表上传 - 确保全局可访问
+    window.handleErpUpload = function(e) {
       const file = e.target.files[0];
       if (!file) return;
       
@@ -678,7 +925,30 @@
       if (jsonData.length === 0) return false;
       
       const actualHeaders = Object.keys(jsonData[0]);
-      return requiredHeaders.every(header => actualHeaders.includes(header));
+      
+      // 如果指定了必需的表头，则进行严格验证
+      if (requiredHeaders && requiredHeaders.length > 0) {
+        // 对于ERP对照表，只需要验证必需的字段
+        return requiredHeaders.every(header => 
+          actualHeaders.some(actualHeader => 
+            actualHeader.toLowerCase().includes(header.toLowerCase())
+          )
+        );
+      }
+      
+      // 对于班表数据，确保有足够的列并且包含关键字段
+      if (actualHeaders.length >= 14) {
+        // 检查是否包含关键字段（部分匹配即可）
+        const keyFields = ['日期', 'ERP', '姓名', '报班时段', '状态'];
+        const hasKeyFields = keyFields.every(field => 
+          actualHeaders.some(header => 
+            header.toLowerCase().includes(field.toLowerCase())
+          )
+        );
+        return hasKeyFields;
+      }
+      
+      return false;
     }
 
     // 渲染班表数据列表
@@ -699,10 +969,24 @@
       dataContainer.classList.remove('hidden');
       
       appData.rosterData.forEach(item => {
+        // 计算数据的日期范围
+        let dateRange = '未知日期范围';
+        if (item.data && item.data.length > 0) {
+          const dates = item.data.map(row => new Date(row.日期))
+                                 .filter(date => !isNaN(date.getTime()));
+          if (dates.length > 0) {
+            const sortedDates = dates.sort((a, b) => a - b);
+            const startDate = formatDate(sortedDates[0]);
+            const endDate = formatDate(sortedDates[sortedDates.length - 1]);
+            dateRange = startDate === endDate ? startDate : `${startDate} 至 ${endDate}`;
+          }
+        }
+        
         const row = document.createElement('tr');
         row.className = 'border-t border-gray-200 hover:bg-gray-50';
         row.innerHTML = `
           <td class="px-3 py-2">${formatDateTime(new Date(item.importTime))}</td>
+          <td class="px-3 py-2">${dateRange}</td>
           <td class="px-3 py-2">${item.count}</td>
           <td class="px-3 py-2">
             <button class="text-danger hover:text-danger/80 text-sm delete-roster" data-id="${item.id}">
@@ -1283,9 +1567,34 @@
 
     // 保存数据到本地存储
     function saveDataToStorage() {
-      localStorage.setItem('rosterData', JSON.stringify(appData.rosterData));
-      localStorage.setItem('onlineData', JSON.stringify(appData.onlineData));
-      localStorage.setItem('erpData', JSON.stringify(appData.erpData));
+      try {
+        // 限制保存的数据量，只保留最近的记录
+        const limitedRosterData = appData.rosterData.slice(-5); // 只保留最近5条班表数据
+        const limitedOnlineData = appData.onlineData.slice(-5); // 只保留最近5条在线数据
+        
+        localStorage.setItem('rosterData', JSON.stringify(limitedRosterData));
+        localStorage.setItem('onlineData', JSON.stringify(limitedOnlineData));
+        localStorage.setItem('erpData', JSON.stringify(appData.erpData));
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          console.error('存储空间不足，尝试清理旧数据...');
+          // 尝试更严格的数据限制
+          try {
+            const veryLimitedRosterData = appData.rosterData.slice(-1); // 只保留最近1条班表数据
+            const veryLimitedOnlineData = appData.onlineData.slice(-1); // 只保留最近1条在线数据
+            
+            localStorage.setItem('rosterData', JSON.stringify(veryLimitedRosterData));
+            localStorage.setItem('onlineData', JSON.stringify(veryLimitedOnlineData));
+            localStorage.setItem('erpData', JSON.stringify(appData.erpData));
+            showToast('存储空间接近上限，已自动清理部分历史数据', 'warning');
+          } catch (retryError) {
+            console.error('清理数据后仍无法保存:', retryError);
+            throw retryError; // 重新抛出错误，让上层捕获
+          }
+        } else {
+          throw error;
+        }
+      }
     }
 
     // 显示提示信息
