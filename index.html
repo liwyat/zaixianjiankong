@@ -153,13 +153,20 @@
           <h3 class="font-medium text-gray-700 mb-3 flex items-center">
             <i class="fa fa-exchange text-primary mr-2"></i>ERP对照表（使用我提供的全八大组ERP名单，每月更新一次即可）
           </h3>
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer" id="erp-upload-area" onclick="document.getElementById('erp-file').click()">
-            <i class="fa fa-file-excel-o text-3xl text-gray-400 mb-2"></i>
-            <p class="text-sm text-gray-500">点击或拖拽Excel文件到此处</p>
-            <input type="file" id="erp-file" class="hidden" accept=".xlsx">
+          
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">请粘贴ERP对照表数据（包含表头）</label>
+            <textarea id="erp-paste-area" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[150px]" placeholder="粘贴文本数据..."></textarea>
           </div>
+          
+          <button id="erp-import-btn" onclick="handleErpPasteImport()" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md flex items-center justify-center transition-colors">
+            <i class="fa fa-paste mr-2"></i>导入数据
+          </button>
           <div class="mt-3 text-xs text-gray-500">
-            <p>表头要求：ERP、账号</p>
+            <p><strong>操作提示：</strong></p>
+            <p>1. 表头要求：ERP账号、客服账号</p>
+            <p>2. 可直接从表格中复制粘贴数据（包含表头）</p>
+            <p>3. 系统会自动识别制表符分隔的数据</p>
           </div>
         </div>
       </div>
@@ -447,25 +454,8 @@
 
     // 初始化事件监听
     function initEventListeners() {
-      // 上传区域点击事件 - 只添加到存在的元素
-      const erpUploadArea = document.getElementById('erp-upload-area');
-      if (erpUploadArea) {
-        erpUploadArea.addEventListener('click', () => {
-          const erpFile = document.getElementById('erp-file');
-          if (erpFile) erpFile.click();
-        });
-      }
-      
-      // 拖放事件 - 只设置ERP部分，班表使用粘贴导入
-      if (document.getElementById('erp-upload-area') && document.getElementById('erp-file')) {
-        setupDragDrop('erp-upload-area', 'erp-file');
-      }
-      
-      // 文件上传处理 - 只处理ERP部分
-      const erpFile = document.getElementById('erp-file');
-      if (erpFile) {
-        erpFile.addEventListener('change', window.handleErpUpload);
-      }
+      // ERP对照表导入已改为粘贴方式，通过按钮onclick直接调用handleErpPasteImport
+      // 已移除文件上传相关的事件监听器
       
       // 在线人力数据粘贴导入按钮事件
       const onlineImportBtn = document.getElementById('online-import-btn');
@@ -590,6 +580,97 @@
       
       // 重置文件输入
       e.target.value = '';
+    }
+    
+    // 处理ERP对照表粘贴导入
+    window.handleErpPasteImport = function() {
+      try {
+        // 获取粘贴的文本内容
+        const pasteText = document.getElementById('erp-paste-area').value.trim();
+        if (!pasteText) {
+          showToast('请先粘贴ERP对照表数据', 'warning');
+          return;
+        }
+        
+        // 按行分割文本
+        const lines = pasteText.split('\n');
+        if (lines.length < 2) {
+          showToast('数据格式错误，至少需要包含表头和一行数据', 'error');
+          return;
+        }
+        
+        // 解析表头
+        const headerLine = lines[0].trim();
+        const headers = headerLine.split(/\t+/); // 使用制表符分割表头
+        
+        // 验证表头
+        const expectedHeaders = ['ERP账号', '客服账号'];
+        const isValidHeader = expectedHeaders.every(expected => 
+          headers.some(header => 
+            header.toLowerCase().includes(expected.toLowerCase())
+          )
+        );
+        
+        if (!isValidHeader) {
+          showToast('表头不符合要求，需要包含"ERP账号"和"客服账号"', 'error');
+          return;
+        }
+        
+        // 解析数据行
+        const jsonData = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue; // 跳过空行
+          
+          const values = line.split(/\t+/); // 使用制表符分割值
+          if (values.length >= 2) {
+            jsonData.push({
+              'ERP': values[0].trim(),
+              '账号': values[1].trim()
+            });
+          }
+        }
+        
+        if (jsonData.length === 0) {
+          showToast('未能解析到有效数据，请检查粘贴格式', 'error');
+          return;
+        }
+        
+        // 添加导入信息
+        const importTime = new Date();
+        const erpItem = {
+          id: 'erp_' + Date.now(),
+          importTime: importTime,
+          data: jsonData,
+          count: jsonData.length
+        };
+        
+        // 替换现有ERP数据
+        appData.erpData = [erpItem];
+        
+        try {
+          // 保存到本地存储
+          saveDataToStorage();
+          
+          // 更新UI
+          renderErpList();
+          
+          // 清空文本框
+          document.getElementById('erp-paste-area').value = '';
+          
+          showToast(`ERP对照表导入成功，共 ${jsonData.length} 条记录`, 'success');
+        } catch (saveError) {
+          if (saveError.name === 'QuotaExceededError') {
+            console.error('保存数据失败，存储空间不足:', saveError);
+            showToast('存储空间不足，请清理浏览器缓存后重试', 'error');
+          } else {
+            throw saveError; // 重新抛出其他类型的错误
+          }
+        }
+      } catch (error) {
+        console.error('解析ERP对照表数据失败:', error);
+        showToast('解析ERP对照表数据失败，请检查粘贴格式', 'error');
+      }
     }
     
     // 处理班表数据粘贴导入 - 确保全局可访问
