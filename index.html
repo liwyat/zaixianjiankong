@@ -295,6 +295,7 @@
               <label class="block text-xs text-gray-500 mb-1">员工所属五级部门（必选）</label>
               <select id="filter-dept" class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
                 <option value="">全部部门</option>
+                <option value="SOHO运营四组京喜在线一组" selected>SOHO运营四组京喜在线一组</option>
                 <!-- 部门选项将动态添加 -->
               </select>
             </div>
@@ -350,7 +351,16 @@
         
         <!-- 小组报表区域 -->
         <div id="group-report-container" class="mb-6">
-          <h3 id="time-period-title" class="text-lg font-medium text-gray-700 mb-4 text-center">时段：<span id="current-time-period">--</span></h3>
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">员工所属五级部门</label>
+              <select id="group-report-department" class="border border-gray-300 rounded-md px-2 py-1 text-sm">
+                <option value="">全部部门</option>
+                <option value="SOHO运营四组京喜在线一组" selected>SOHO运营四组京喜在线一组</option>
+              </select>
+            </div>
+            <h3 id="time-period-title" class="text-lg font-medium text-gray-700 text-center">时段：<span id="current-time-period">--</span></h3>
+          </div>
           <div class="overflow-x-auto">
             <div class="text-center py-8 text-gray-500 hidden" id="group-report-empty">暂无数据</div>
             <table class="min-w-full text-sm bg-white border border-gray-200 hidden" id="group-report-table">
@@ -373,9 +383,9 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">日期</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">员工所属五级部门</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">优选权益</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">报班时段</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">小组</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600">优选权益</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">ERP</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">姓名</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">状态</th>
@@ -1646,9 +1656,9 @@
         row.innerHTML = `
           <td class="px-3 py-2">${item.日期}</td>
           <td class="px-3 py-2">${item.员工所属五级部门}</td>
+          <td class="px-3 py-2">${item.优选权益 || ''}</td>
           <td class="px-3 py-2">${item.报班时段}</td>
           <td class="px-3 py-2">${item.所属行政处}</td>
-          <td class="px-3 py-2">${item.优选权益 || ''}</td>
           <td class="px-3 py-2">${item.ERP}</td>
           <td class="px-3 py-2">${item.姓名}</td>
           <td class="px-3 py-2 ${statusClass}">${item.状态}</td>
@@ -1696,10 +1706,11 @@
       leaveCount.textContent = leave;
     }
 
-    // 获取仅按日期和时段筛选的数据（用于小组报表）
+    // 获取按日期、时段和部门筛选的数据（用于小组报表）
     function getDateAndTimeFilteredData() {
       const filterDate = document.getElementById('filter-date').value;
       const filterTimePeriod = document.getElementById('filter-time-period').value;
+      const filterDepartment = document.getElementById('group-report-department')?.value;
       
       // 检查是否有必要的数据
       if (appData.rosterData.length === 0 || appData.onlineData.length === 0 || appData.erpData.length === 0) {
@@ -1771,10 +1782,11 @@
         }
       })
       .filter(item => item !== null)
-      // 只应用日期和时段筛选
+      // 应用日期、时段和部门筛选
       .filter(item => {
         if (filterDate && item.日期 !== filterDate) return false;
         if (filterTimePeriod && item.报班时段 !== filterTimePeriod) return false;
+        if (filterDepartment && item.员工所属五级部门 !== filterDepartment) return false;
         return true;
       });
     }
@@ -1790,6 +1802,13 @@
       // 更新显示当前筛选的时段值
       const filterTimePeriod = document.getElementById('filter-time-period').value;
       currentTimePeriodElement.textContent = filterTimePeriod || '所有时段';
+      
+      // 添加部门筛选事件监听
+      const departmentFilter = document.getElementById('group-report-department');
+      if (departmentFilter && !departmentFilter.hasAttribute('data-listener-added')) {
+        departmentFilter.setAttribute('data-listener-added', 'true');
+        departmentFilter.addEventListener('change', renderGroupReport);
+      }
       
       // 清空表格内容
       tbodyElement.innerHTML = '';
@@ -1807,8 +1826,8 @@
       emptyElement.classList.add('hidden');
       tableElement.classList.remove('hidden');
       
-      // 从数据中提取唯一的优选权益值
-      const uniqueBenefits = [...new Set(dateAndTimeFilteredData.map(item => item.优选权益 || '无'))];
+      // 从数据中提取唯一的优选权益值，过滤掉'兜底'
+      const uniqueBenefits = [...new Set(dateAndTimeFilteredData.map(item => item.优选权益 || '无'))].filter(b => b !== '兜底');
       // 确保'无'始终在最前面，其他按字母排序
       const allBenefits = uniqueBenefits.sort((a, b) => {
         if (a === '无') return -1;
@@ -1826,9 +1845,16 @@
       headerCellDept.textContent = '所属行政处';
       headerRow1.appendChild(headerCellDept);
       
+      // 添加汇总列
+      const headerCellSummary = document.createElement('th');
+      headerCellSummary.colSpan = 4;
+      headerCellSummary.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
+      headerCellSummary.textContent = '汇总';
+      headerRow1.appendChild(headerCellSummary);
+      
       allBenefits.forEach(benefit => {
         const headerCell = document.createElement('th');
-        headerCell.colSpan = 3;
+        headerCell.colSpan = 4;
         headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
         headerCell.textContent = `优选权益: ${benefit}`;
         headerRow1.appendChild(headerCell);
@@ -1837,8 +1863,17 @@
       const headerRow2 = document.createElement('tr');
       headerRow2.className = 'bg-gray-100';
       
+      // 汇总列的二级表头
+      ['在线', '离线', '已请假', '非在线占比'].forEach(status => {
+        const headerCell = document.createElement('th');
+        headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
+        headerCell.textContent = status;
+        headerRow2.appendChild(headerCell);
+      });
+      
+      // 各优选权益的二级表头
       allBenefits.forEach(() => {
-        ['在线', '离线', '已请假'].forEach(status => {
+        ['在线', '离线', '已请假', '非在线占比'].forEach(status => {
           const headerCell = document.createElement('th');
           headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
           headerCell.textContent = status;
@@ -1853,6 +1888,9 @@
       const groupStats = {};
       
       dateAndTimeFilteredData.forEach(item => {
+        // 跳过兜底数据
+        if (item.优选权益 === '兜底') return;
+        
         const group = item.所属行政处 || '未分组';
         const benefit = item.优选权益 || '无';
         
@@ -1860,7 +1898,12 @@
         if (!groupStats[group]) {
           groupStats[group] = {
             所属行政处: group,
-            权益统计: {}
+            权益统计: {},
+            汇总统计: {  // 添加汇总统计
+              在线人数: 0,
+              离线人数: 0,
+              已请假人数: 0
+            }
           };
           
           // 初始化所有存在的优选权益的统计
@@ -1877,12 +1920,16 @@
         switch (item.状态) {
           case '在线':
             groupStats[group].权益统计[benefit].在线人数++;
+            groupStats[group].汇总统计.在线人数++;
             break;
           case '离线':
+          case '挂起':  // 挂起状态也计入离线
             groupStats[group].权益统计[benefit].离线人数++;
+            groupStats[group].汇总统计.离线人数++;
             break;
           case '已请假':
             groupStats[group].权益统计[benefit].已请假人数++;
+            groupStats[group].汇总统计.已请假人数++;
             break;
         }
       });
@@ -1892,6 +1939,15 @@
         return a.所属行政处.localeCompare(b.所属行政处);
       });
       
+      // 计算非在线占比的函数
+      function calculateNonOnlineRatio(online, offline, leave) {
+        const total = online + offline;
+        if (total === 0) return { ratio: 0, percentage: '0%' };
+        const ratio = offline / total;
+        const percentage = Math.round(ratio * 100) + '%';
+        return { ratio, percentage };
+      }
+      
       // 渲染表格行
       statsArray.forEach(stat => {
         const row = document.createElement('tr');
@@ -1900,14 +1956,43 @@
         // 创建行政处单元格
         let rowHtml = `<td class="px-4 py-2 border border-gray-200">${stat.所属行政处}</td>`;
         
+        // 添加汇总统计
+        const summary = stat.汇总统计;
+        const summaryRatio = calculateNonOnlineRatio(summary.在线人数, summary.离线人数, summary.已请假人数);
+        const summaryBarWidth = Math.min(summaryRatio.ratio * 100, 100);
+        
+        rowHtml += `
+          <td class="px-4 py-2 text-center border border-gray-200 text-green-600">${summary.在线人数}</td>
+          <td class="px-4 py-2 text-center border border-gray-200 text-red-600">${summary.离线人数}</td>
+          <td class="px-4 py-2 text-center border border-gray-200 text-orange-600">${summary.已请假人数}</td>
+          <td class="px-4 py-2 border border-gray-200">
+            <div class="flex items-center space-x-2">
+              <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div class="bg-red-500 h-2.5 rounded-full" style="width: ${summaryBarWidth}%"></div>
+              </div>
+              <span class="text-sm whitespace-nowrap">${summaryRatio.percentage}</span>
+            </div>
+          </td>
+        `;
+        
         // 为每个优选权益创建状态单元格
         allBenefits.forEach(benefit => {
           const benefitStats = stat.权益统计[benefit] || {在线人数: 0, 离线人数: 0, 已请假人数: 0};
+          const ratio = calculateNonOnlineRatio(benefitStats.在线人数, benefitStats.离线人数, benefitStats.已请假人数);
+          const barWidth = Math.min(ratio.ratio * 100, 100);
           
           rowHtml += `
             <td class="px-4 py-2 text-center border border-gray-200 text-green-600">${benefitStats.在线人数}</td>
             <td class="px-4 py-2 text-center border border-gray-200 text-red-600">${benefitStats.离线人数}</td>
             <td class="px-4 py-2 text-center border border-gray-200 text-orange-600">${benefitStats.已请假人数}</td>
+            <td class="px-4 py-2 border border-gray-200">
+              <div class="flex items-center space-x-2">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-red-500 h-2.5 rounded-full" style="width: ${barWidth}%"></div>
+                </div>
+                <span class="text-sm whitespace-nowrap">${ratio.percentage}</span>
+              </div>
+            </td>
           `;
         });
         
@@ -1946,8 +2031,9 @@
       // 准备导出数据
       const exportData = appData.resultData.map(item => ({
         '日期': item.日期,
-        '报班时段': item.报班时段,
         '员工所属五级部门': item.员工所属五级部门,
+        '优选权益': item.优选权益,
+        '报班时段': item.报班时段,
         '所属行政处': item.所属行政处,
         'ERP': item.ERP,
         '姓名': item.姓名,
