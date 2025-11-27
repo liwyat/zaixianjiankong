@@ -1810,23 +1810,63 @@
         });
       });
       
+      // 创建账号到部门信息的映射（从在线数据和ERP数据中获取）
+      const accountToDepartmentMap = {};
+      
+      // 先从在线数据中获取部门信息
+      allOnlineData.forEach(onlineItem => {
+        if (onlineItem.账号 && onlineItem.员工所属五级部门) {
+          accountToDepartmentMap[onlineItem.账号.toLowerCase()] = onlineItem.员工所属五级部门;
+        }
+      });
+      
+      // 再从ERP数据中补充部门信息（如果在线数据中没有）
+      appData.erpData.forEach(item => {
+        item.data.forEach(row => {
+          if (row.账号 && row.员工所属五级部门 && !accountToDepartmentMap[row.账号.toLowerCase()]) {
+            accountToDepartmentMap[row.账号.toLowerCase()] = row.员工所属五级部门;
+          }
+        });
+      });
+      
       // 遍历在线数据，找出未在班表中的在线员工
       allOnlineData.forEach(onlineItem => {
         const account = onlineItem.账号;
-        // 如果账号不在班表中且状态为在线
-        if (!rosterAccounts.has(account) && onlineItem.状态 === '在线') {
+        
+        // 确保账号存在，且状态为在线，且不在班表中
+        if (account && onlineItem.状态 === '在线' && !rosterAccounts.has(account)) {
           const erpData = accountToErpDataMap[account.toLowerCase()] || {};
           
+          // 获取员工所属五级部门（优先使用在线数据，其次使用映射中的数据，最后使用ERP数据）
+          const department = onlineItem.员工所属五级部门 || 
+                           accountToDepartmentMap[account.toLowerCase()] || 
+                           erpData.员工所属五级部门 || '';
+          
+          // 获取所属行政处
+          const adminDept = onlineItem.所属行政处 || 
+                           accountToDeptMap[account] || '';
+          
+          // 获取日期（确保有日期信息）
+          const date = onlineItem.日期 || (erpData.日期 || '');
+          
+          // 获取报班时段（确保有时段信息）
+          const timePeriod = onlineItem.报班时段 || '';
+          
           // 只添加符合筛选条件的记录
-          if ((!filterDate || onlineItem.日期 === filterDate) &&
-              (!filterTimePeriod || onlineItem.报班时段 === filterTimePeriod) &&
-              (!filterDepartment || onlineItem.员工所属五级部门 === filterDepartment)) {
+          // 对于没有五级部门但行政处信息有效的员工，也需要保留
+          const departmentMatch = !filterDepartment || department === filterDepartment;
+          
+          // 确保至少有行政处信息才添加（即使没有五级部门）
+          if ((!filterDate || date === filterDate) &&
+              (!filterTimePeriod || timePeriod === filterTimePeriod) &&
+              departmentMatch &&
+              adminDept) {
             
             nonRosterOnlineEmployees.push({
-              日期: onlineItem.日期 || '',
-              报班时段: onlineItem.报班时段 || '',
-              员工所属五级部门: onlineItem.员工所属五级部门 || '',
-              所属行政处: onlineItem.所属行政处 || '',
+              日期: date,
+              报班时段: timePeriod,
+              员工所属五级部门: department,
+              所属行政处: adminDept,
               优选权益: '',  // 不在班表中的员工没有优选权益
               ERP: erpData.ERP || '',
               姓名: erpData.姓名 || '',
@@ -1972,20 +2012,42 @@
           case '在线':
             // 如果是非班表在线员工，只更新汇总统计，不更新权益统计
             if (item.非班表在线员工) {
-              groupStats[group].汇总统计.在线人数++;
+              // 确保该非班表在线员工有有效的所属行政处
+              if (group) {
+                // 确保分组统计对象已初始化
+                if (!groupStats[group]) {
+                  groupStats[group] = {
+                    所属行政处: group,
+                    权益统计: {},
+                    汇总统计: {在线人数: 0, 离线人数: 0, 已请假人数: 0}
+                  };
+                  // 初始化所有存在的优选权益的统计
+                  allBenefits.forEach(b => {
+                    groupStats[group].权益统计[b] = {在线人数: 0, 离线人数: 0, 已请假人数: 0};
+                  });
+                }
+                groupStats[group].汇总统计.在线人数++;
+              }
             } else {
-              groupStats[group].权益统计[benefit].在线人数++;
-              groupStats[group].汇总统计.在线人数++;
+              // 只有当权益统计对象存在时才更新
+              if (groupStats[group].权益统计[benefit]) {
+                groupStats[group].权益统计[benefit].在线人数++;
+                groupStats[group].汇总统计.在线人数++;
+              }
             }
             break;
           case '离线':
           case '挂起':  // 挂起状态也计入离线
-            groupStats[group].权益统计[benefit].离线人数++;
-            groupStats[group].汇总统计.离线人数++;
+            if (groupStats[group].权益统计[benefit]) {
+              groupStats[group].权益统计[benefit].离线人数++;
+              groupStats[group].汇总统计.离线人数++;
+            }
             break;
           case '已请假':
-            groupStats[group].权益统计[benefit].已请假人数++;
-            groupStats[group].汇总统计.已请假人数++;
+            if (groupStats[group].权益统计[benefit]) {
+              groupStats[group].权益统计[benefit].已请假人数++;
+              groupStats[group].汇总统计.已请假人数++;
+            }
             break;
         }
       });
