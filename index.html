@@ -2010,14 +2010,14 @@
       
       // 添加汇总列
       const headerCellSummary = document.createElement('th');
-      headerCellSummary.colSpan = 4;
+      headerCellSummary.colSpan = 5;
       headerCellSummary.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
       headerCellSummary.textContent = '已报班人员汇总情况';
       headerRow1.appendChild(headerCellSummary);
       
       allBenefits.forEach(benefit => {
         const headerCell = document.createElement('th');
-          headerCell.colSpan = 4;
+          headerCell.colSpan = 5;
           headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
           headerCell.textContent = `已报班优选权益: ${benefit}`;
           headerRow1.appendChild(headerCell);
@@ -2027,7 +2027,7 @@
       headerRow2.className = 'bg-gray-100';
       
       // 汇总列的二级表头
-      ['在线', '离线', '已请假', '非在线占比'].forEach(status => {
+      ['在线', '离线', '挂起', '已请假', '在线占比'].forEach(status => {
         const headerCell = document.createElement('th');
         headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
         headerCell.textContent = status;
@@ -2036,7 +2036,7 @@
       
       // 各优选权益的二级表头
       allBenefits.forEach(() => {
-        ['在线', '离线', '已请假', '非在线占比'].forEach(status => {
+        ['在线', '离线', '挂起', '已请假', '在线占比'].forEach(status => {
           const headerCell = document.createElement('th');
           headerCell.className = 'px-4 py-2 text-center font-medium text-gray-600 border border-gray-200';
           headerCell.textContent = status;
@@ -2065,6 +2065,7 @@
             汇总统计: {  // 添加汇总统计
               在线人数: 0,
               离线人数: 0,
+              挂起人数: 0,
               已请假人数: 0
             }
           };
@@ -2074,6 +2075,7 @@
             groupStats[group].权益统计[b] = {
               在线人数: 0,
               离线人数: 0,
+              挂起人数: 0,
               已请假人数: 0
             };
           });
@@ -2091,11 +2093,11 @@
                   groupStats[group] = {
                     所属行政处: group,
                     权益统计: {},
-                    汇总统计: {在线人数: 0, 离线人数: 0, 已请假人数: 0}
+                    汇总统计: {在线人数: 0, 离线人数: 0, 挂起人数: 0, 已请假人数: 0}
                   };
                   // 初始化所有存在的优选权益的统计
                   allBenefits.forEach(b => {
-                    groupStats[group].权益统计[b] = {在线人数: 0, 离线人数: 0, 已请假人数: 0};
+                    groupStats[group].权益统计[b] = {在线人数: 0, 离线人数: 0, 挂起人数: 0, 已请假人数: 0};
                   });
                 }
                 groupStats[group].汇总统计.在线人数++;
@@ -2109,10 +2111,15 @@
             }
             break;
           case '离线':
-          case '挂起':  // 挂起状态也计入离线
             if (groupStats[group].权益统计[benefit]) {
               groupStats[group].权益统计[benefit].离线人数++;
               groupStats[group].汇总统计.离线人数++;
+            }
+            break;
+          case '挂起':
+            if (groupStats[group].权益统计[benefit]) {
+              groupStats[group].权益统计[benefit].挂起人数++;
+              groupStats[group].汇总统计.挂起人数++;
             }
             break;
           case '已请假':
@@ -2129,11 +2136,11 @@
         return a.所属行政处.localeCompare(b.所属行政处);
       });
       
-      // 计算非在线占比的函数
-      function calculateNonOnlineRatio(online, offline, leave) {
-        const total = online + offline;
+      // 计算在线占比的函数
+      function calculateOnlineRatio(online, offline, suspended, leave) {
+        const total = online + offline + suspended;
         if (total === 0) return { ratio: 0, percentage: '0%' };
-        const ratio = offline / total;
+        const ratio = online / total;
         const percentage = Math.round(ratio * 100) + '%';
         return { ratio, percentage };
       }
@@ -2148,17 +2155,18 @@
         
         // 添加汇总统计
         const summary = stat.汇总统计;
-        const summaryRatio = calculateNonOnlineRatio(summary.在线人数, summary.离线人数, summary.已请假人数);
+        const summaryRatio = calculateOnlineRatio(summary.在线人数, summary.离线人数, summary.挂起人数, summary.已请假人数);
         const summaryBarWidth = Math.min(summaryRatio.ratio * 100, 100);
         
         rowHtml += `
           <td class="px-4 py-2 text-center border border-gray-200 text-green-600">${summary.在线人数}</td>
           <td class="px-4 py-2 text-center border border-gray-200 text-red-600">${summary.离线人数}</td>
+          <td class="px-4 py-2 text-center border border-gray-200 text-yellow-600">${summary.挂起人数}</td>
           <td class="px-4 py-2 text-center border border-gray-200 text-orange-600">${summary.已请假人数}</td>
           <td class="px-4 py-2 border border-gray-200">
             <div class="flex items-center space-x-2">
               <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <div class="bg-red-500 h-2.5 rounded-full" style="width: ${summaryBarWidth}%"></div>
+                <div class="bg-green-500 h-2.5 rounded-full" style="width: ${summaryBarWidth}%"></div>
               </div>
               <span class="text-sm whitespace-nowrap">${summaryRatio.percentage}</span>
             </div>
@@ -2167,18 +2175,19 @@
         
         // 为每个优选权益创建状态单元格
         allBenefits.forEach(benefit => {
-          const benefitStats = stat.权益统计[benefit] || {在线人数: 0, 离线人数: 0, 已请假人数: 0};
-          const ratio = calculateNonOnlineRatio(benefitStats.在线人数, benefitStats.离线人数, benefitStats.已请假人数);
+          const benefitStats = stat.权益统计[benefit] || {在线人数: 0, 离线人数: 0, 挂起人数: 0, 已请假人数: 0};
+          const ratio = calculateOnlineRatio(benefitStats.在线人数, benefitStats.离线人数, benefitStats.挂起人数, benefitStats.已请假人数);
           const barWidth = Math.min(ratio.ratio * 100, 100);
           
           rowHtml += `
             <td class="px-4 py-2 text-center border border-gray-200 text-green-600">${benefitStats.在线人数}</td>
             <td class="px-4 py-2 text-center border border-gray-200 text-red-600">${benefitStats.离线人数}</td>
+            <td class="px-4 py-2 text-center border border-gray-200 text-yellow-600">${benefitStats.挂起人数}</td>
             <td class="px-4 py-2 text-center border border-gray-200 text-orange-600">${benefitStats.已请假人数}</td>
             <td class="px-4 py-2 border border-gray-200">
               <div class="flex items-center space-x-2">
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
-                  <div class="bg-red-500 h-2.5 rounded-full" style="width: ${barWidth}%"></div>
+                  <div class="bg-green-500 h-2.5 rounded-full" style="width: ${barWidth}%"></div>
                 </div>
                 <span class="text-sm whitespace-nowrap">${ratio.percentage}</span>
               </div>
