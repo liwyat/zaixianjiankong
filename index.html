@@ -863,17 +863,65 @@
     // 处理在线情况数据粘贴导入 - 确保全局可访问
     window.handleOnlinePasteImport = function() {
       const pasteText = document.getElementById('online-paste-area').value.trim();
-      const date = document.getElementById('online-date').value;
-      const timePeriod = document.getElementById('online-time-period').value;
+      let date = document.getElementById('online-date').value;
+      let timePeriod = document.getElementById('online-time-period').value;
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTimePeriod = `${currentHour.toString().padStart(2, '0')}:00-${currentHour.toString().padStart(2, '0')}:59`;
       
+      // 校验数据是否已粘贴
       if (!pasteText) {
         showToast('请粘贴数据', 'warning');
         return;
       }
       
+      // 日期校验 - 如果未选择日期，使用当前日期
       if (!date) {
-        showToast('请选择日期', 'warning');
-        return;
+        date = currentDate;
+        document.getElementById('online-date').value = date;
+      }
+      
+      // 时段校验 - 如果未选择时段，使用当前时段
+      if (!timePeriod) {
+        timePeriod = currentTimePeriod;
+        const timeSelect = document.getElementById('online-time-period');
+        for (let i = 0; i < timeSelect.options.length; i++) {
+          if (timeSelect.options[i].value === timePeriod) {
+            timeSelect.selectedIndex = i;
+            break;
+          }
+        }
+      }
+      
+      // 校验选择的时段是否与当前时间对应
+      if (timePeriod !== currentTimePeriod || date !== currentDate) {
+        const confirmChange = confirm(`您当前选择的日期时段与系统当前时间不匹配。\n\n选择的日期: ${date}\n选择的时段: ${timePeriod}\n\n当前日期: ${currentDate}\n当前时段: ${currentTimePeriod}\n\n是否调整为当前时间对应的日期时段？`);
+        
+        if (confirmChange) {
+          // 更新人力在线情况导入区域的日期和时段
+          date = currentDate;
+          timePeriod = currentTimePeriod;
+          document.getElementById('online-date').value = date;
+          
+          const timeSelect = document.getElementById('online-time-period');
+          for (let i = 0; i < timeSelect.options.length; i++) {
+            if (timeSelect.options[i].value === timePeriod) {
+              timeSelect.selectedIndex = i;
+              break;
+            }
+          }
+          
+          // 同步更新人员情况查询区域的日期和时段
+          document.getElementById('filter-date').value = date;
+          const filterTimeSelect = document.getElementById('filter-time-period');
+          for (let i = 0; i < filterTimeSelect.options.length; i++) {
+            if (filterTimeSelect.options[i].value === timePeriod) {
+              filterTimeSelect.selectedIndex = i;
+              break;
+            }
+          }
+        }
       }
       
       try {
@@ -1460,9 +1508,33 @@
     // 筛选数据
     function filterData() {
       // 获取筛选条件
-      const filterDate = document.getElementById('filter-date').value;
-      const filterTimePeriod = document.getElementById('filter-time-period').value;
+      let filterDate = document.getElementById('filter-date').value;
+      let filterTimePeriod = document.getElementById('filter-time-period').value;
       const filterDept = document.getElementById('filter-dept').value;
+      const now = new Date();
+      
+      // 日期校验 - 如果未选择日期，使用当前日期
+      if (!filterDate) {
+        // 使用当前日期
+        filterDate = now.toISOString().split('T')[0];
+        // 更新界面显示
+        document.getElementById('filter-date').value = filterDate;
+      }
+      
+      // 时段校验 - 如果未选择时段，根据当前时间自动选择
+      if (!filterTimePeriod) {
+        const currentHour = now.getHours();
+        // 根据当前小时确定时段
+        filterTimePeriod = `${currentHour.toString().padStart(2, '0')}:00-${currentHour.toString().padStart(2, '0')}:59`;
+        // 查找并设置对应的时段选项
+        const timeSelect = document.getElementById('filter-time-period');
+        for (let i = 0; i < timeSelect.options.length; i++) {
+          if (timeSelect.options[i].value === filterTimePeriod) {
+            timeSelect.selectedIndex = i;
+            break;
+          }
+        }
+      }
       
       // 获取选中的状态
       const selectedStatuses = getSelectedStatuses();
